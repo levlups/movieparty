@@ -3,13 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎬 Movie reaction | WebRTC duo</title>
+  <title>🎬 watch & react · share site</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
@@ -23,11 +19,11 @@
     }
 
     .app {
-      max-width: 1200px;
+      max-width: 1400px;
       width: 100%;
       background: #1a1f2b;
       border-radius: 2rem;
-      padding: 2rem 1.5rem;
+      padding: 1.8rem 1.5rem;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
       border: 1px solid #2e3a4b;
     }
@@ -35,37 +31,39 @@
     h1 {
       text-align: center;
       font-weight: 500;
-      font-size: 1.8rem;
+      font-size: 1.6rem;
       letter-spacing: -0.5px;
       color: #f0f3fa;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.2rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
+      gap: 0.6rem;
+      flex-wrap: wrap;
     }
 
     h1 span {
       background: #2e3a4b;
       padding: 0.2rem 0.8rem;
       border-radius: 40px;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 400;
       color: #9eb7d9;
     }
 
+    /* Video grid */
     .video-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-      margin-bottom: 2rem;
+      gap: 1.2rem;
+      margin-bottom: 1.2rem;
     }
 
     .video-card {
       background: #0d121c;
-      border-radius: 1.5rem;
+      border-radius: 1.2rem;
       overflow: hidden;
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
       border: 1px solid #2e3a4b;
       aspect-ratio: 4 / 3;
       position: relative;
@@ -77,36 +75,33 @@
       object-fit: cover;
       display: block;
       background: #05080e;
-      transform: scaleX(-1); /* mirror local preview for natural feel */
+      transform: scaleX(-1);
     }
 
-    /* Remote video should NOT be mirrored */
-    .video-card.remote video {
-      transform: scaleX(1);
-    }
+    .video-card.remote video { transform: scaleX(1); }
 
     .label {
       position: absolute;
-      bottom: 12px;
-      left: 16px;
-      background: rgba(0, 0, 0, 0.6);
+      bottom: 10px;
+      left: 14px;
+      background: rgba(0, 0, 0, 0.65);
       backdrop-filter: blur(6px);
-      padding: 0.25rem 0.9rem;
+      padding: 0.2rem 0.8rem;
       border-radius: 50px;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: 500;
       color: #eef3ff;
-      letter-spacing: 0.3px;
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
+    /* Controls */
     .controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 1rem;
+      gap: 0.8rem;
       justify-content: center;
       align-items: center;
-      margin-bottom: 1.8rem;
+      margin-bottom: 1rem;
     }
 
     button {
@@ -114,18 +109,17 @@
       border: none;
       color: #f0f4fe;
       font-weight: 500;
-      font-size: 1rem;
-      padding: 0.8rem 1.8rem;
+      font-size: 0.9rem;
+      padding: 0.7rem 1.5rem;
       border-radius: 60px;
       cursor: pointer;
       transition: all 0.15s ease;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
+      gap: 0.4rem;
       border: 1px solid #3f4e63;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-      flex: 0 1 auto;
     }
 
     button:hover:not(:disabled) {
@@ -134,141 +128,193 @@
       transform: scale(1.02);
     }
 
-    button:active:not(:disabled) {
-      transform: scale(0.98);
-    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
-    button:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
+    .primary { background: #3b6eff; border-color: #5a86ff; color: white; }
+    .primary:hover:not(:disabled) { background: #2e5ae0; }
+    .secondary { background: #2a3548; }
+    .danger { background: #b33a4b; border-color: #d45c6e; }
+    .danger:hover:not(:disabled) { background: #9e2f3f; }
 
-    .primary {
-      background: #3b6eff;
-      border-color: #5a86ff;
-      color: white;
-    }
-
-    .primary:hover:not(:disabled) {
-      background: #2e5ae0;
-    }
-
-    .secondary {
-      background: #2a3548;
-    }
-
-    .danger {
-      background: #b33a4b;
-      border-color: #d45c6e;
-    }
-
-    .danger:hover:not(:disabled) {
-      background: #9e2f3f;
-    }
-
+    /* Signal area */
     .signal-box {
       display: flex;
       flex-direction: column;
-      gap: 0.8rem;
+      gap: 0.7rem;
       background: #0d121c;
-      border-radius: 1.5rem;
-      padding: 1.5rem;
+      border-radius: 1.2rem;
+      padding: 1.2rem;
       border: 1px solid #2e3a4b;
+      margin-bottom: 1rem;
     }
 
     .signal-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.8rem;
+      gap: 0.7rem;
       align-items: center;
     }
 
     .signal-row label {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: #9eb7d9;
       font-weight: 500;
-      min-width: 80px;
+      min-width: 90px;
     }
 
     textarea {
       flex: 1;
       background: #070b12;
       border: 1px solid #2e3a4b;
-      border-radius: 1rem;
-      padding: 0.8rem 1rem;
+      border-radius: 0.8rem;
+      padding: 0.6rem 0.9rem;
       color: #d2e0f5;
       font-family: 'SF Mono', 'Fira Code', monospace;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       resize: vertical;
-      min-height: 70px;
-      transition: 0.15s;
+      min-height: 60px;
     }
 
-    textarea:focus {
-      outline: none;
-      border-color: #3b6eff;
-      box-shadow: 0 0 0 3px rgba(59, 110, 255, 0.2);
-    }
+    textarea:focus { outline: none; border-color: #3b6eff; box-shadow: 0 0 0 3px rgba(59, 110, 255, 0.2); }
 
     .status-badge {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: #a7bbdd;
       background: #0e141f;
-      padding: 0.5rem 1rem;
+      padding: 0.4rem 1rem;
       border-radius: 40px;
       border: 1px solid #2e3a4b;
-      margin-top: 0.5rem;
+      margin-top: 0.3rem;
     }
 
     .dot {
-      width: 10px;
-      height: 10px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
       background: #b33a4b;
       display: inline-block;
     }
 
-    .dot.connected {
-      background: #2ecc71;
-      box-shadow: 0 0 10px #2ecc71;
+    .dot.connected { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; }
+
+    /* Web share section */
+    .share-section {
+      background: #0d121c;
+      border-radius: 1.2rem;
+      padding: 1.2rem;
+      border: 1px solid #2e3a4b;
+      margin-bottom: 0.8rem;
+    }
+
+    .share-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.8rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .share-header h2 {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #c9d9f0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .url-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .url-bar input {
+      flex: 1;
+      background: #070b12;
+      border: 1px solid #2e3a4b;
+      border-radius: 2rem;
+      padding: 0.6rem 1.2rem;
+      color: #d2e0f5;
+      font-size: 0.9rem;
+      min-width: 200px;
+    }
+
+    .url-bar input:focus { outline: none; border-color: #3b6eff; }
+
+    .url-bar button {
+      padding: 0.6rem 1.4rem;
+      font-size: 0.85rem;
+      background: #3b6eff;
+      border-color: #5a86ff;
+    }
+
+    .iframe-container {
+      width: 100%;
+      height: 380px;
+      background: #05080e;
+      border-radius: 0.8rem;
+      border: 1px solid #2e3a4b;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .iframe-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+    }
+
+    .iframe-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #4a5c78;
+      font-size: 0.95rem;
+      text-align: center;
+      padding: 1rem;
     }
 
     .footer-note {
       text-align: center;
       color: #5e6f8a;
-      font-size: 0.75rem;
-      margin-top: 1rem;
+      font-size: 0.7rem;
+      margin-top: 0.6rem;
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <h1>🎥 watch & react <span>webrtc duo</span></h1>
+    <h1>🎥 watch & react <span>webrtc + shared site</span></h1>
 
+    <!-- Video grid -->
     <div class="video-grid">
-      <!-- Local video -->
       <div class="video-card">
         <video id="localVideo" autoplay playsinline muted></video>
         <div class="label">You</div>
       </div>
-      <!-- Remote video -->
       <div class="video-card remote">
         <video id="remoteVideo" autoplay playsinline></video>
         <div class="label">Friend</div>
       </div>
     </div>
 
+    <!-- Call controls -->
     <div class="controls">
       <button id="startBtn" class="primary">🎬 Start camera & mic</button>
       <button id="callBtn" class="secondary" disabled>📞 Call friend</button>
       <button id="hangupBtn" class="danger" disabled>✖ Hang up</button>
     </div>
 
+    <!-- Signaling (offer/answer) -->
     <div class="signal-box">
       <div class="signal-row">
         <label>📤 Your offer</label>
@@ -285,14 +331,33 @@
         <span id="statusText">Ready — start camera</span>
       </div>
     </div>
+
+    <!-- Website sharing section -->
+    <div class="share-section">
+      <div class="share-header">
+        <h2>🌐 Share a website</h2>
+        <span style="font-size:0.75rem; color:#6b7f9e;">loads for both of you</span>
+      </div>
+      <div class="url-bar">
+        <input type="url" id="urlInput" placeholder="https://example.com" value="https://example.com">
+        <button id="loadUrlBtn">Load</button>
+      </div>
+      <div class="iframe-container" id="iframeContainer">
+        <div class="iframe-placeholder" id="iframePlaceholder">
+          No site loaded yet — paste a URL and click "Load"
+        </div>
+        <iframe id="sharedIframe" style="display:none;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"></iframe>
+      </div>
+    </div>
+
     <div class="footer-note">
-      No external services · pure WebRTC · works on GitHub Pages
+      No external services · pure WebRTC · shared website via iframe + data channel
     </div>
   </div>
 
   <script>
     (function() {
-      // ---- DOM elements ----
+      // ----- DOM references -----
       const localVideo = document.getElementById('localVideo');
       const remoteVideo = document.getElementById('remoteVideo');
       const startBtn = document.getElementById('startBtn');
@@ -304,14 +369,20 @@
       const applyAnswerBtn = document.getElementById('applyAnswerBtn');
       const statusDot = document.getElementById('statusDot');
       const statusText = document.getElementById('statusText');
+      const urlInput = document.getElementById('urlInput');
+      const loadUrlBtn = document.getElementById('loadUrlBtn');
+      const sharedIframe = document.getElementById('sharedIframe');
+      const iframePlaceholder = document.getElementById('iframePlaceholder');
+      const iframeContainer = document.getElementById('iframeContainer');
 
-      // ---- state ----
+      // ----- state -----
       let localStream = null;
       let peerConnection = null;
-      let currentOffer = null;       // RTCSessionDescription
+      let dataChannel = null;
+      let currentOffer = null;
       let isCaller = false;
+      let isReceiver = false;
 
-      // STUN config (only public STUN, no external service)
       const rtcConfig = {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
@@ -319,425 +390,52 @@
         ]
       };
 
-      // ---- helper functions ----
-      function updateStatus(message, connected = false) {
-        statusText.textContent = message;
-        if (connected) {
-          statusDot.classList.add('connected');
-        } else {
-          statusDot.classList.remove('connected');
-        }
+      // ----- helper: status -----
+      function updateStatus(msg, connected = false) {
+        statusText.textContent = msg;
+        statusDot.classList.toggle('connected', connected);
       }
 
+      // ----- enable/disable buttons -----
       function setButtonsState() {
-        const hasLocalStream = !!localStream;
+        const hasLocal = !!localStream;
         const hasPeer = !!peerConnection;
+        const peerOpen = hasPeer && peerConnection.connectionState !== 'closed' && peerConnection.connectionState !== 'failed';
 
-        startBtn.disabled = hasLocalStream;
-        callBtn.disabled = !hasLocalStream || (hasPeer && peerConnection.signalingState !== 'closed' && peerConnection.iceConnectionState !== 'closed');
-        // enable hangup if we have an active peer connection
+        startBtn.disabled = hasLocal;
+        callBtn.disabled = !hasLocal || peerOpen;
         hangupBtn.disabled = !hasPeer;
 
-        copyOfferBtn.disabled = !offerText.value;
-        applyAnswerBtn.disabled = !answerText.value.trim() || !peerConnection || isCaller === false;
-        // Actually applyAnswerBtn should be enabled when we have a peer connection, we are the caller and answer text is non-empty
-        if (peerConnection && isCaller && answerText.value.trim()) {
-          applyAnswerBtn.disabled = false;
+        copyOfferBtn.disabled = !offerText.value.trim();
+
+        if (isCaller && hasPeer) {
+          applyAnswerBtn.disabled = !answerText.value.trim();
+        } else if (!hasPeer && !isCaller && hasLocal) {
+          applyAnswerBtn.disabled = !answerText.value.trim();
         } else {
           applyAnswerBtn.disabled = true;
         }
       }
 
-      // cleanup peer connection and remote video
+      // ----- close peer & data channel -----
       function closePeerConnection() {
+        if (dataChannel) {
+          dataChannel.onopen = null;
+          dataChannel.onmessage = null;
+          dataChannel.onclose = null;
+          dataChannel.close();
+          dataChannel = null;
+        }
         if (peerConnection) {
-          // remove event listeners to avoid leaks
           peerConnection.onicecandidate = null;
           peerConnection.ontrack = null;
           peerConnection.onconnectionstatechange = null;
+          peerConnection.ondatachannel = null;
           peerConnection.close();
           peerConnection = null;
         }
-        // clear remote video
         remoteVideo.srcObject = null;
-        // reset offer text (but keep answer?)
         offerText.value = '';
-        currentOffer = null;
-        isCaller = false;
-        updateStatus('Disconnected — ready', false);
-        setButtonsState();
-      }
-
-      // stop local stream and reset
-      function stopLocalStream() {
-        if (localStream) {
-          localStream.getTracks().forEach(track => track.stop());
-          localStream = null;
-        }
-        localVideo.srcObject = null;
-        setButtonsState();
-      }
-
-      // --- 1. Start camera and microphone ---
-      startBtn.addEventListener('click', async () => {
-        if (localStream) return;
-        try {
-          updateStatus('Requesting camera & mic...', false);
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 } },
-            audio: true
-          });
-          localStream = stream;
-          localVideo.srcObject = stream;
-          // if there's an existing peer connection, add tracks (but usually not needed)
-          if (peerConnection) {
-            const senders = peerConnection.getSenders();
-            stream.getTracks().forEach(track => {
-              // only add if not already present
-              if (!senders.some(s => s.track === track)) {
-                peerConnection.addTrack(track, stream);
-              }
-            });
-          }
-          updateStatus('Camera ready — you can call', false);
-          setButtonsState();
-        } catch (err) {
-          console.error('getUserMedia error:', err);
-          updateStatus('❌ Camera error: ' + err.message, false);
-          alert('Could not access camera/mic: ' + err.message);
-        }
-      });
-
-      // --- 2. Create peer connection and initiate call ---
-      callBtn.addEventListener('click', async () => {
-        if (!localStream) {
-          alert('Start your camera first.');
-          return;
-        }
-
-        // if there's already an open connection, close it
-        if (peerConnection) {
-          closePeerConnection();
-        }
-
-        try {
-          updateStatus('Creating offer...', false);
-          isCaller = true;
-          peerConnection = new RTCPeerConnection(rtcConfig);
-
-          // add local tracks
-          localStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, localStream);
-          });
-
-          // handle ICE candidates
-          peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-              // we don't use trickle ICE, so we'll wait for gathering to complete
-              // but we can log it
-              console.log('ICE candidate', event.candidate);
-            } else {
-              console.log('ICE gathering complete');
-            }
-          };
-
-          // remote stream handling
-          peerConnection.ontrack = (event) => {
-            const [remoteStream] = event.streams;
-            remoteVideo.srcObject = remoteStream;
-            updateStatus('Friend connected 🎬', true);
-          };
-
-          // connection state changes
-          peerConnection.onconnectionstatechange = () => {
-            if (!peerConnection) return;
-            const state = peerConnection.connectionState;
-            if (state === 'connected') {
-              updateStatus('Friend connected 🎬', true);
-            } else if (state === 'disconnected' || state === 'failed' || state === 'closed') {
-              updateStatus('Connection lost', false);
-              // don't auto close, but update UI
-            } else {
-              updateStatus(`Peer: ${state}`, false);
-            }
-            setButtonsState();
-          };
-
-          // create offer
-          const offer = await peerConnection.createOffer();
-          await peerConnection.setLocalDescription(offer);
-
-          // wait for ICE gathering to complete (non-trickle, to keep signaling simple)
-          await new Promise((resolve) => {
-            if (peerConnection.iceGatheringState === 'complete') {
-              resolve();
-            } else {
-              const checkState = () => {
-                if (peerConnection.iceGatheringState === 'complete') {
-                  peerConnection.removeEventListener('icegatheringstatechange', checkState);
-                  resolve();
-                }
-              };
-              peerConnection.addEventListener('icegatheringstatechange', checkState);
-              // also resolve after timeout 3s to prevent hanging
-              setTimeout(resolve, 3000);
-            }
-          });
-
-          // now localDescription contains ICE candidates
-          currentOffer = peerConnection.localDescription;
-          offerText.value = JSON.stringify(currentOffer.toJSON(), null, 2);
-          updateStatus('Offer ready — share with friend', false);
-          setButtonsState();
-        } catch (err) {
-          console.error('Call creation error:', err);
-          updateStatus('❌ ' + err.message, false);
-          if (peerConnection) {
-            closePeerConnection();
-          }
-        }
-      });
-
-      // --- 3. Apply remote answer (when we are caller) ---
-      applyAnswerBtn.addEventListener('click', async () => {
-        if (!peerConnection || !isCaller) {
-          alert('No active call to apply answer to. Start a call first.');
-          return;
-        }
-        const answerRaw = answerText.value.trim();
-        if (!answerRaw) {
-          alert('Paste the answer JSON first.');
-          return;
-        }
-
-        try {
-          const answer = JSON.parse(answerRaw);
-          // validate minimal fields
-          if (!answer.type || !answer.sdp) {
-            throw new Error('Invalid answer: missing type or sdp');
-          }
-
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-          updateStatus('Answer applied — connecting...', false);
-          setButtonsState();
-          // clear answer text? maybe keep for reference
-        } catch (err) {
-          console.error('Error applying answer:', err);
-          alert('Invalid answer: ' + err.message);
-        }
-      });
-
-      // --- 4. Copy offer to clipboard ---
-      copyOfferBtn.addEventListener('click', () => {
-        const text = offerText.value;
-        if (!text) return;
-        navigator.clipboard.writeText(text).then(() => {
-          updateStatus('Offer copied to clipboard', false);
-          setTimeout(() => {
-            if (peerConnection && peerConnection.connectionState === 'connected') {
-              updateStatus('Friend connected 🎬', true);
-            } else {
-              updateStatus('Ready', false);
-            }
-          }, 1500);
-        }).catch(err => {
-          alert('Could not copy: ' + err);
-        });
-      });
-
-      // --- 5. Hang up / close connection ---
-      hangupBtn.addEventListener('click', () => {
-        if (peerConnection) {
-          closePeerConnection();
-        }
-        // also clear answer field
-        answerText.value = '';
-        updateStatus('Call ended', false);
-        setButtonsState();
-      });
-
-      // --- 6. Watch for answer text changes to update button state ---
-      answerText.addEventListener('input', setButtonsState);
-
-      // --- 7. Initialize buttons state on page load ---
-      setButtonsState();
-      updateStatus('Ready — start camera', false);
-
-      // Also handle window unload cleanup
-      window.addEventListener('beforeunload', () => {
-        if (localStream) {
-          localStream.getTracks().forEach(track => track.stop());
-        }
-        if (peerConnection) {
-          peerConnection.close();
-        }
-      });
-
-      // ---- Receiver side workflow (manual) ----
-      // The friend (receiver) will:
-      // 1. Open page, click "Start camera & mic"
-      // 2. Paste the offer JSON into a new textarea? But we need a way for them to paste offer.
-      // We add a secret trick: if user clicks "Apply answer" while answer text contains an offer,
-      // it doesn't work. So we need a receiver mode.
-      // We solve this by allowing the "Apply answer" button to also work if we are NOT caller,
-      // but in that case we treat the textarea as an OFFER input and generate an answer.
-
-      // Wait, we need a proper way for the receiver to paste offer and create answer.
-      // Let's extend the functionality: The "Apply answer" button can act as "Process remote offer" 
-      // when we are not the caller and have no peerConnection.
-      // Also we need to generate answer automatically.
-
-      // We'll override the applyAnswerBtn click handler to support two modes:
-      // - Caller: apply remote answer (as above)
-      // - Receiver: treat the answerText field as an offer, create answer, put answer in offerText field.
-
-      // But we already added a click listener. Let's remove and add a combined one.
-      // To keep it clean, we'll replace the original applyAnswerBtn event listener.
-
-      // We must remove the previously assigned listener (but can't easily remove anonymous).
-      // Instead, let's reassign a new one by cloning the button? 
-      // Simpler: we will replace the applyAnswerBtn's onclick with new logic, but the previous 
-      // addEventListener will still fire. We can use a flag to avoid double handling.
-      // Actually better: remove all listeners by cloning the button.
-      (function fixApplyButton() {
-        const oldBtn = applyAnswerBtn;
-        const newBtn = oldBtn.cloneNode(true);
-        oldBtn.parentNode.replaceChild(newBtn, oldBtn);
-        // now newBtn is clean, we need to re-fetch references and re-attach logic.
-        // We'll reassign the global applyAnswerBtn variable and update references.
-        // But we have closure references. We'll just re-declare inside the IIFE.
-        // This is messy but works.
-      })();
-
-      // After cloning, we need to rewire everything because references are broken.
-      // Instead of that mess, let's re-implement the whole app in a cleaner way? 
-      // Due to time, I'll rewrite the whole script using a more direct approach.
-
-      // Actually, let's restart the script with a clean implementation.
-      // I'll reload the script from scratch to avoid the double listener issue.
-
-      // But we can't reload script easily. Instead, let's attach a new listener to the new button
-      // and ignore old one by removing event listeners? Not possible for anonymous.
-      // We'll just attach the new functionality and also keep old one but guard with a flag.
-
-      // To save time, I'll just replace the entire script block with a clean version.
-
-    })();
-  </script>
-
-  <!-- Clean re-implementation to avoid confusion (placed after original, but original runs first) -->
-  <script>
-    // This script will completely replace the previous logic by resetting everything.
-    // We'll re-grab all elements and override.
-    (function cleanImplementation() {
-      // Remove all previous listeners by cloning critical buttons? 
-      // Simpler: we will replace the whole body innerHTML? No, too risky.
-      // We'll just override the global functions and reinitialize.
-      // But there's no way to remove anonymous listeners. However, we can 
-      // replace the elements themselves.
-
-      // Let's replace the three main buttons and the textareas? That's heavy.
-      // Instead, we'll just use the existing DOM and set new event listeners that 
-      // check if we are in receiver mode.
-
-      // I'll just create a clean version by reassigning the onclick property (which overrides 
-      // any addEventListener? No, both run. But we can set a flag to ignore old ones.
-
-      // To make it simple: we will remove all children from .app and rebuild? 
-      // Too destructive. Let's instead set a global flag to skip old handlers.
-
-      // Best approach: throw away and restart from scratch. I'll delete the old script 
-      // mentally and write a new one that only uses the DOM as-is but re-attaches 
-      // listeners via onclick to avoid duplicate.
-
-      // Since the first script already ran and added listeners, they are still active.
-      // We'll now override them by setting their onclick to null and then assigning new handlers.
-      // But addEventListener can't be removed that way. So we'll clone each button.
-
-      // Let's clone the buttons we need to control.
-      function cloneButton(id) {
-        const old = document.getElementById(id);
-        if (!old) return null;
-        const newBtn = old.cloneNode(true);
-        old.parentNode.replaceChild(newBtn, old);
-        return newBtn;
-      }
-
-      // Clone all interactive elements
-      const startBtn2 = cloneButton('startBtn');
-      const callBtn2 = cloneButton('callBtn');
-      const hangupBtn2 = cloneButton('hangupBtn');
-      const copyOfferBtn2 = cloneButton('copyOfferBtn');
-      const applyAnswerBtn2 = cloneButton('applyAnswerBtn');
-
-      // Also clone textareas to clear their listeners? They only had input listener.
-      // We'll clone them too.
-      const offerText2 = cloneButton('offerText'); // not a button, but works
-      const answerText2 = cloneButton('answerText');
-
-      // Re-fetch all needed references
-      const localVideo2 = document.getElementById('localVideo');
-      const remoteVideo2 = document.getElementById('remoteVideo');
-      const statusDot2 = document.getElementById('statusDot');
-      const statusText2 = document.getElementById('statusText');
-
-      // State
-      let localStream = null;
-      let peerConnection = null;
-      let currentOffer = null;
-      let isCaller = false;
-      let isReceiver = false; // will be true when we process an offer as receiver
-
-      const rtcConfig = {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
-        ]
-      };
-
-      function updateStatus(msg, connected) {
-        statusText2.textContent = msg;
-        if (connected) {
-          statusDot2.classList.add('connected');
-        } else {
-          statusDot2.classList.remove('connected');
-        }
-      }
-
-      function setButtonsState() {
-        const hasLocalStream = !!localStream;
-        const hasPeer = !!peerConnection;
-        const isPeerOpen = hasPeer && peerConnection.connectionState !== 'closed' && peerConnection.connectionState !== 'failed';
-
-        startBtn2.disabled = hasLocalStream;
-        // call button enabled if we have local stream and no active connection
-        callBtn2.disabled = !hasLocalStream || isPeerOpen;
-        hangupBtn2.disabled = !hasPeer;
-
-        copyOfferBtn2.disabled = !offerText2.value;
-        // applyAnswer button: 
-        // - if we are caller: enabled when we have peerConnection, answer text non-empty, and not already applied
-        // - if we are receiver: enabled when we have no peerConnection, text is offer, and we have local stream
-        if (isCaller && hasPeer) {
-          applyAnswerBtn2.disabled = !answerText2.value.trim();
-        } else if (!hasPeer && !isCaller && hasLocalStream) {
-          // receiver mode: enable if there is text in answerText2 (which acts as offer input)
-          applyAnswerBtn2.disabled = !answerText2.value.trim();
-        } else {
-          applyAnswerBtn2.disabled = true;
-        }
-      }
-
-      function closePeerConnection() {
-        if (peerConnection) {
-          peerConnection.onicecandidate = null;
-          peerConnection.ontrack = null;
-          peerConnection.onconnectionstatechange = null;
-          peerConnection.close();
-          peerConnection = null;
-        }
-        remoteVideo2.srcObject = null;
-        offerText2.value = '';
         currentOffer = null;
         isCaller = false;
         isReceiver = false;
@@ -745,17 +443,71 @@
         setButtonsState();
       }
 
+      // ----- stop local stream -----
       function stopLocalStream() {
         if (localStream) {
           localStream.getTracks().forEach(t => t.stop());
           localStream = null;
         }
-        localVideo2.srcObject = null;
+        localVideo.srcObject = null;
         setButtonsState();
       }
 
-      // --- Start camera ---
-      startBtn2.addEventListener('click', async () => {
+      // ----- SHARED WEBSITE: load URL into iframe (local) and broadcast via datachannel -----
+      function loadSharedWebsite(url) {
+        if (!url || !url.startsWith('http')) {
+          alert('Please enter a valid URL starting with http:// or https://');
+          return;
+        }
+        // set iframe src
+        sharedIframe.src = url;
+        sharedIframe.style.display = 'block';
+        iframePlaceholder.style.display = 'none';
+
+        // broadcast to remote via data channel if open
+        if (dataChannel && dataChannel.readyState === 'open') {
+          dataChannel.send(JSON.stringify({ type: 'load_url', url: url }));
+        } else {
+          console.log('Data channel not open, URL not broadcasted.');
+        }
+      }
+
+      // ----- receive URL from datachannel (remote) -----
+      function receiveRemoteUrl(url) {
+        if (!url || !url.startsWith('http')) return;
+        sharedIframe.src = url;
+        sharedIframe.style.display = 'block';
+        iframePlaceholder.style.display = 'none';
+        // also update the input field so the user sees what's loaded
+        urlInput.value = url;
+        updateStatus('Friend loaded a site', false);
+      }
+
+      // ----- setup data channel (common to both caller and receiver) -----
+      function setupDataChannel(channel) {
+        dataChannel = channel;
+        dataChannel.onopen = () => {
+          console.log('Data channel open');
+          updateStatus('Data channel ready', true);
+        };
+        dataChannel.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'load_url' && msg.url) {
+              receiveRemoteUrl(msg.url);
+            }
+          } catch (e) {
+            console.warn('Invalid data channel message', e);
+          }
+        };
+        dataChannel.onclose = () => {
+          console.log('Data channel closed');
+          dataChannel = null;
+        };
+      }
+
+      // ----- START CAMERA -----
+      startBtn.addEventListener('click', async () => {
         if (localStream) return;
         try {
           updateStatus('Requesting camera & mic...', false);
@@ -764,7 +516,7 @@
             audio: true
           });
           localStream = stream;
-          localVideo2.srcObject = stream;
+          localVideo.srcObject = stream;
           updateStatus('Camera ready', false);
           setButtonsState();
         } catch (err) {
@@ -773,8 +525,8 @@
         }
       });
 
-      // --- Create offer (caller) ---
-      callBtn2.addEventListener('click', async () => {
+      // ----- CALLER: create offer + data channel -----
+      callBtn.addEventListener('click', async () => {
         if (!localStream) return;
         if (peerConnection) closePeerConnection();
 
@@ -784,6 +536,16 @@
           isReceiver = false;
           peerConnection = new RTCPeerConnection(rtcConfig);
 
+          // create data channel (caller creates it)
+          const dc = peerConnection.createDataChannel('shared-site');
+          setupDataChannel(dc);
+
+          // listen for remote data channel (in case receiver creates one - but we use caller-created)
+          peerConnection.ondatachannel = (event) => {
+            // if receiver also creates a channel we ignore, but we can handle it just in case
+            console.log('Remote data channel received (ignored, using caller-created)');
+          };
+
           localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
           peerConnection.onicecandidate = (e) => {
@@ -792,7 +554,7 @@
 
           peerConnection.ontrack = (e) => {
             const [remoteStream] = e.streams;
-            remoteVideo2.srcObject = remoteStream;
+            remoteVideo.srcObject = remoteStream;
             updateStatus('Friend connected 🎬', true);
           };
 
@@ -807,7 +569,6 @@
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
 
-          // wait for ICE gathering
           await new Promise(resolve => {
             if (peerConnection.iceGatheringState === 'complete') return resolve();
             const check = () => {
@@ -821,7 +582,7 @@
           });
 
           currentOffer = peerConnection.localDescription;
-          offerText2.value = JSON.stringify(currentOffer.toJSON(), null, 2);
+          offerText.value = JSON.stringify(currentOffer.toJSON(), null, 2);
           updateStatus('Offer ready — share', false);
           setButtonsState();
         } catch (err) {
@@ -831,12 +592,12 @@
         }
       });
 
-      // --- Apply answer OR process offer (receiver mode) ---
-      applyAnswerBtn2.addEventListener('click', async () => {
-        const text = answerText2.value.trim();
+      // ----- APPLY (caller: apply answer / receiver: process offer) -----
+      applyAnswerBtn.addEventListener('click', async () => {
+        const text = answerText.value.trim();
         if (!text) return;
 
-        // If we are caller and have a peerConnection -> apply remote answer
+        // ---- CALLER: apply remote answer ----
         if (isCaller && peerConnection) {
           try {
             const answer = JSON.parse(text);
@@ -850,7 +611,7 @@
           return;
         }
 
-        // Otherwise, act as receiver: parse offer, create answer, put it in offerText2
+        // ---- RECEIVER: process offer, create answer ----
         if (!localStream) {
           alert('Start your camera first before receiving an offer.');
           return;
@@ -870,6 +631,11 @@
 
           peerConnection = new RTCPeerConnection(rtcConfig);
 
+          // receiver: listen for data channel created by caller
+          peerConnection.ondatachannel = (event) => {
+            setupDataChannel(event.channel);
+          };
+
           localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
           peerConnection.onicecandidate = (e) => {
@@ -878,7 +644,7 @@
 
           peerConnection.ontrack = (e) => {
             const [remoteStream] = e.streams;
-            remoteVideo2.srcObject = remoteStream;
+            remoteVideo.srcObject = remoteStream;
             updateStatus('Friend connected 🎬', true);
           };
 
@@ -895,7 +661,6 @@
           const answer = await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
 
-          // wait for ICE gathering
           await new Promise(resolve => {
             if (peerConnection.iceGatheringState === 'complete') return resolve();
             const check = () => {
@@ -908,8 +673,7 @@
             setTimeout(resolve, 3000);
           });
 
-          // put the answer into offerText2 so the receiver can copy it back
-          offerText2.value = JSON.stringify(peerConnection.localDescription.toJSON(), null, 2);
+          offerText.value = JSON.stringify(peerConnection.localDescription.toJSON(), null, 2);
           updateStatus('Answer ready — copy and send back', false);
           setButtonsState();
         } catch (err) {
@@ -919,9 +683,9 @@
         }
       });
 
-      // --- Copy offer/answer ---
-      copyOfferBtn2.addEventListener('click', () => {
-        const txt = offerText2.value;
+      // ----- COPY offer/answer -----
+      copyOfferBtn.addEventListener('click', () => {
+        const txt = offerText.value;
         if (!txt) return;
         navigator.clipboard.writeText(txt).then(() => {
           updateStatus('Copied to clipboard', false);
@@ -935,26 +699,44 @@
         }).catch(() => alert('Copy failed'));
       });
 
-      // --- Hangup ---
-      hangupBtn2.addEventListener('click', () => {
+      // ----- HANGUP -----
+      hangupBtn.addEventListener('click', () => {
         closePeerConnection();
-        answerText2.value = '';
+        answerText.value = '';
         updateStatus('Call ended', false);
         setButtonsState();
       });
 
-      // --- Update button state when text changes ---
-      answerText2.addEventListener('input', setButtonsState);
-      offerText2.addEventListener('input', setButtonsState);
+      // ----- update button state on text input -----
+      answerText.addEventListener('input', setButtonsState);
+      offerText.addEventListener('input', setButtonsState);
 
-      // Initialize
+      // ----- SHARE WEBSITE: local load button -----
+      loadUrlBtn.addEventListener('click', () => {
+        let url = urlInput.value.trim();
+        if (!url.startsWith('http')) {
+          url = 'https://' + url;
+        }
+        loadSharedWebsite(url);
+      });
+
+      // also allow pressing Enter in URL input
+      urlInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          loadUrlBtn.click();
+        }
+      });
+
+      // ----- initialize UI -----
       setButtonsState();
       updateStatus('Ready — start camera', false);
 
-      // Cleanup on page unload
+      // clean up on unload
       window.addEventListener('beforeunload', () => {
         if (localStream) localStream.getTracks().forEach(t => t.stop());
         if (peerConnection) peerConnection.close();
+        if (dataChannel) dataChannel.close();
       });
 
     })();
