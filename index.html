@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎬 watch & react · share site</title>
+  <title>🎬 watch & react · screen share</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -51,12 +51,36 @@
       color: #9eb7d9;
     }
 
-    /* Video grid */
-    .video-grid {
+    /* Layout: movie (big) + reactions (small) */
+    .main-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 2.2fr 1fr;
       gap: 1.2rem;
       margin-bottom: 1.2rem;
+    }
+
+    .screen-card {
+      background: #0d121c;
+      border-radius: 1.2rem;
+      overflow: hidden;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+      border: 1px solid #2e3a4b;
+      aspect-ratio: 16 / 9;
+      position: relative;
+    }
+
+    .screen-card video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      background: #000;
+    }
+
+    .reaction-column {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
     }
 
     .video-card {
@@ -67,6 +91,7 @@
       border: 1px solid #2e3a4b;
       aspect-ratio: 4 / 3;
       position: relative;
+      flex: 1;
     }
 
     .video-card video {
@@ -92,6 +117,12 @@
       font-weight: 500;
       color: #eef3ff;
       border: 1px solid rgba(255, 255, 255, 0.1);
+      z-index: 2;
+    }
+
+    .label.sharing {
+      background: rgba(46, 204, 113, 0.75);
+      border-color: #2ecc71;
     }
 
     /* Controls */
@@ -133,6 +164,8 @@
     .primary { background: #3b6eff; border-color: #5a86ff; color: white; }
     .primary:hover:not(:disabled) { background: #2e5ae0; }
     .secondary { background: #2a3548; }
+    .success { background: #1f8a4c; border-color: #2ecc71; }
+    .success:hover:not(:disabled) { background: #16703d; }
     .danger { background: #b33a4b; border-color: #d45c6e; }
     .danger:hover:not(:disabled) { background: #9e2f3f; }
 
@@ -145,7 +178,7 @@
       border-radius: 1.2rem;
       padding: 1.2rem;
       border: 1px solid #2e3a4b;
-      margin-bottom: 1rem;
+      margin-bottom: 0.6rem;
     }
 
     .signal-row {
@@ -201,120 +234,70 @@
 
     .dot.connected { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; }
 
-    /* Web share section */
-    .share-section {
-      background: #0d121c;
-      border-radius: 1.2rem;
-      padding: 1.2rem;
-      border: 1px solid #2e3a4b;
-      margin-bottom: 0.8rem;
-    }
-
-    .share-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.8rem;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .share-header h2 {
-      font-size: 1.1rem;
-      font-weight: 500;
-      color: #c9d9f0;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .url-bar {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 0.8rem;
-      flex-wrap: wrap;
-    }
-
-    .url-bar input {
-      flex: 1;
-      background: #070b12;
-      border: 1px solid #2e3a4b;
-      border-radius: 2rem;
-      padding: 0.6rem 1.2rem;
-      color: #d2e0f5;
-      font-size: 0.9rem;
-      min-width: 200px;
-    }
-
-    .url-bar input:focus { outline: none; border-color: #3b6eff; }
-
-    .url-bar button {
-      padding: 0.6rem 1.4rem;
-      font-size: 0.85rem;
-      background: #3b6eff;
-      border-color: #5a86ff;
-    }
-
-    .iframe-container {
-      width: 100%;
-      height: 380px;
-      background: #05080e;
-      border-radius: 0.8rem;
-      border: 1px solid #2e3a4b;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .iframe-container iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: #fff;
-    }
-
-    .iframe-placeholder {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: #4a5c78;
-      font-size: 0.95rem;
-      text-align: center;
-      padding: 1rem;
-    }
-
     .footer-note {
       text-align: center;
       color: #5e6f8a;
       font-size: 0.7rem;
       margin-top: 0.6rem;
     }
+
+    .hint {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #7d8fa8;
+      margin-bottom: 1rem;
+      padding: 0.6rem 1rem;
+      background: #0e141f;
+      border-radius: 1rem;
+      border: 1px dashed #2e3a4b;
+    }
+
+    @media (max-width: 800px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .reaction-column { flex-direction: row; }
+    }
   </style>
 </head>
 <body>
   <div class="app">
-    <h1>🎥 watch & react <span>webrtc + shared site</span></h1>
+    <h1>🎥 watch & react <span>webrtc screen share</span></h1>
 
-    <!-- Video grid -->
-    <div class="video-grid">
-      <div class="video-card">
-        <video id="localVideo" autoplay playsinline muted></video>
-        <div class="label">You</div>
+    <div class="hint">
+      💡 To watch a movie together: play the movie in another tab/window,
+      then click <strong>Share screen</strong> and pick that tab. Your friend will see it here.
+    </div>
+
+    <!-- Movie screen + reaction cameras -->
+    <div class="main-grid">
+      <!-- Shared screen (movie) -->
+      <div class="screen-card">
+        <video id="remoteScreen" autoplay playsinline></video>
+        <div class="label" id="screenLabel">Movie (friend's screen)</div>
       </div>
-      <div class="video-card remote">
-        <video id="remoteVideo" autoplay playsinline></video>
-        <div class="label">Friend</div>
+
+      <!-- Reaction cameras -->
+      <div class="reaction-column">
+        <div class="video-card">
+          <video id="localVideo" autoplay playsinline muted></video>
+          <div class="label">You</div>
+        </div>
+        <div class="video-card remote">
+          <video id="remoteVideo" autoplay playsinline></video>
+          <div class="label">Friend</div>
+        </div>
       </div>
     </div>
 
-    <!-- Call controls -->
+    <!-- Controls -->
     <div class="controls">
       <button id="startBtn" class="primary">🎬 Start camera & mic</button>
+      <button id="shareBtn" class="success" disabled>🖥️ Share screen</button>
+      <button id="stopShareBtn" class="secondary" disabled>⏹ Stop sharing</button>
       <button id="callBtn" class="secondary" disabled>📞 Call friend</button>
       <button id="hangupBtn" class="danger" disabled>✖ Hang up</button>
     </div>
 
-    <!-- Signaling (offer/answer) -->
+    <!-- Signaling -->
     <div class="signal-box">
       <div class="signal-row">
         <label>📤 Your offer</label>
@@ -323,7 +306,7 @@
       </div>
       <div class="signal-row">
         <label>📥 Remote answer</label>
-        <textarea id="answerText" placeholder="Paste friend's answer here..." ></textarea>
+        <textarea id="answerText" placeholder="Paste friend's answer here..."></textarea>
         <button id="applyAnswerBtn" disabled>Apply</button>
       </div>
       <div class="status-badge">
@@ -332,35 +315,21 @@
       </div>
     </div>
 
-    <!-- Website sharing section -->
-    <div class="share-section">
-      <div class="share-header">
-        <h2>🌐 Share a website</h2>
-        <span style="font-size:0.75rem; color:#6b7f9e;">loads for both of you</span>
-      </div>
-      <div class="url-bar">
-        <input type="url" id="urlInput" placeholder="https://example.com" value="https://example.com">
-        <button id="loadUrlBtn">Load</button>
-      </div>
-      <div class="iframe-container" id="iframeContainer">
-        <div class="iframe-placeholder" id="iframePlaceholder">
-          No site loaded yet — paste a URL and click "Load"
-        </div>
-        <iframe id="sharedIframe" style="display:none;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"></iframe>
-      </div>
-    </div>
-
     <div class="footer-note">
-      No external services · pure WebRTC · shared website via iframe + data channel
+      No external services · pure WebRTC · screen share + reactions
     </div>
   </div>
 
   <script>
     (function() {
-      // ----- DOM references -----
+      // ----- DOM -----
       const localVideo = document.getElementById('localVideo');
       const remoteVideo = document.getElementById('remoteVideo');
+      const remoteScreen = document.getElementById('remoteScreen');
+      const screenLabel = document.getElementById('screenLabel');
       const startBtn = document.getElementById('startBtn');
+      const shareBtn = document.getElementById('shareBtn');
+      const stopShareBtn = document.getElementById('stopShareBtn');
       const callBtn = document.getElementById('callBtn');
       const hangupBtn = document.getElementById('hangupBtn');
       const offerText = document.getElementById('offerText');
@@ -369,19 +338,13 @@
       const applyAnswerBtn = document.getElementById('applyAnswerBtn');
       const statusDot = document.getElementById('statusDot');
       const statusText = document.getElementById('statusText');
-      const urlInput = document.getElementById('urlInput');
-      const loadUrlBtn = document.getElementById('loadUrlBtn');
-      const sharedIframe = document.getElementById('sharedIframe');
-      const iframePlaceholder = document.getElementById('iframePlaceholder');
-      const iframeContainer = document.getElementById('iframeContainer');
 
       // ----- state -----
-      let localStream = null;
+      let localStream = null;          // camera + mic
+      let screenStream = null;         // screen capture
       let peerConnection = null;
-      let dataChannel = null;
       let currentOffer = null;
       let isCaller = false;
-      let isReceiver = false;
 
       const rtcConfig = {
         iceServers: [
@@ -390,13 +353,17 @@
         ]
       };
 
-      // ----- helper: status -----
+      // Track which sender belongs to what (so we can replace tracks)
+      let camSender = null;   // video sender for camera
+      let screenSender = null; // video sender for screen share
+      let audioSender = null;
+
+      // ----- helpers -----
       function updateStatus(msg, connected = false) {
         statusText.textContent = msg;
         statusDot.classList.toggle('connected', connected);
       }
 
-      // ----- enable/disable buttons -----
       function setButtonsState() {
         const hasLocal = !!localStream;
         const hasPeer = !!peerConnection;
@@ -405,6 +372,9 @@
         startBtn.disabled = hasLocal;
         callBtn.disabled = !hasLocal || peerOpen;
         hangupBtn.disabled = !hasPeer;
+
+        shareBtn.disabled = !hasLocal || !!screenStream;
+        stopShareBtn.disabled = !screenStream;
 
         copyOfferBtn.disabled = !offerText.value.trim();
 
@@ -417,96 +387,46 @@
         }
       }
 
-      // ----- close peer & data channel -----
       function closePeerConnection() {
-        if (dataChannel) {
-          dataChannel.onopen = null;
-          dataChannel.onmessage = null;
-          dataChannel.onclose = null;
-          dataChannel.close();
-          dataChannel = null;
-        }
         if (peerConnection) {
           peerConnection.onicecandidate = null;
           peerConnection.ontrack = null;
           peerConnection.onconnectionstatechange = null;
-          peerConnection.ondatachannel = null;
           peerConnection.close();
           peerConnection = null;
         }
+        camSender = null;
+        screenSender = null;
+        audioSender = null;
         remoteVideo.srcObject = null;
+        remoteScreen.srcObject = null;
+        screenLabel.textContent = 'Movie (friend\'s screen)';
+        screenLabel.classList.remove('sharing');
         offerText.value = '';
         currentOffer = null;
         isCaller = false;
-        isReceiver = false;
         updateStatus('Disconnected', false);
         setButtonsState();
       }
 
-      // ----- stop local stream -----
-      function stopLocalStream() {
-        if (localStream) {
-          localStream.getTracks().forEach(t => t.stop());
-          localStream = null;
+      function stopScreenShare() {
+        if (screenStream) {
+          screenStream.getTracks().forEach(t => t.stop());
+          screenStream = null;
         }
-        localVideo.srcObject = null;
+        // Replace screen track with camera track on the sender (if in a call)
+        if (peerConnection && camSender && localStream) {
+          const camTrack = localStream.getVideoTracks()[0];
+          if (camTrack) {
+            camSender.replaceTrack(camTrack).catch(err => console.warn('replaceTrack failed', err));
+          }
+        }
+        screenSender = null;
+        updateStatus('Screen share stopped', !!peerConnection);
         setButtonsState();
       }
 
-      // ----- SHARED WEBSITE: load URL into iframe (local) and broadcast via datachannel -----
-      function loadSharedWebsite(url) {
-        if (!url || !url.startsWith('http')) {
-          alert('Please enter a valid URL starting with http:// or https://');
-          return;
-        }
-        // set iframe src
-        sharedIframe.src = url;
-        sharedIframe.style.display = 'block';
-        iframePlaceholder.style.display = 'none';
-
-        // broadcast to remote via data channel if open
-        if (dataChannel && dataChannel.readyState === 'open') {
-          dataChannel.send(JSON.stringify({ type: 'load_url', url: url }));
-        } else {
-          console.log('Data channel not open, URL not broadcasted.');
-        }
-      }
-
-      // ----- receive URL from datachannel (remote) -----
-      function receiveRemoteUrl(url) {
-        if (!url || !url.startsWith('http')) return;
-        sharedIframe.src = url;
-        sharedIframe.style.display = 'block';
-        iframePlaceholder.style.display = 'none';
-        // also update the input field so the user sees what's loaded
-        urlInput.value = url;
-        updateStatus('Friend loaded a site', false);
-      }
-
-      // ----- setup data channel (common to both caller and receiver) -----
-      function setupDataChannel(channel) {
-        dataChannel = channel;
-        dataChannel.onopen = () => {
-          console.log('Data channel open');
-          updateStatus('Data channel ready', true);
-        };
-        dataChannel.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'load_url' && msg.url) {
-              receiveRemoteUrl(msg.url);
-            }
-          } catch (e) {
-            console.warn('Invalid data channel message', e);
-          }
-        };
-        dataChannel.onclose = () => {
-          console.log('Data channel closed');
-          dataChannel = null;
-        };
-      }
-
-      // ----- START CAMERA -----
+      // ----- START CAMERA + MIC -----
       startBtn.addEventListener('click', async () => {
         if (localStream) return;
         try {
@@ -525,7 +445,49 @@
         }
       });
 
-      // ----- CALLER: create offer + data channel -----
+      // ----- SHARE SCREEN -----
+      shareBtn.addEventListener('click', async () => {
+        if (screenStream) return;
+        try {
+          updateStatus('Requesting screen share...', false);
+          // Ask user to pick a tab/window/screen
+          const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: { cursor: 'always' },
+            audio: false // set true if you want to capture tab audio (browser-dependent)
+          });
+
+          screenStream = stream;
+
+          // If in a call, replace the camera video track with the screen track
+          if (peerConnection && camSender) {
+            const screenTrack = stream.getVideoTracks()[0];
+            await camSender.replaceTrack(screenTrack);
+            screenSender = camSender;
+          }
+
+          // Auto-stop when user clicks browser's "Stop sharing" button
+          stream.getVideoTracks()[0].onended = () => {
+            stopScreenShare();
+          };
+
+          updateStatus('Sharing screen — friend sees it', !!peerConnection);
+          setButtonsState();
+        } catch (err) {
+          // User cancelled the picker — no need to alert aggressively
+          if (err.name !== 'NotAllowedError') {
+            alert('Screen share error: ' + err.message);
+          }
+          updateStatus('Screen share cancelled', false);
+          setButtonsState();
+        }
+      });
+
+      // ----- STOP SHARING -----
+      stopShareBtn.addEventListener('click', () => {
+        stopScreenShare();
+      });
+
+      // ----- CALLER: create offer + tracks -----
       callBtn.addEventListener('click', async () => {
         if (!localStream) return;
         if (peerConnection) closePeerConnection();
@@ -533,30 +495,73 @@
         try {
           updateStatus('Creating offer...', false);
           isCaller = true;
-          isReceiver = false;
           peerConnection = new RTCPeerConnection(rtcConfig);
 
-          // create data channel (caller creates it)
-          const dc = peerConnection.createDataChannel('shared-site');
-          setupDataChannel(dc);
+          // Add camera video + audio (always send reactions)
+          const camTrack = localStream.getVideoTracks()[0];
+          const micTrack = localStream.getAudioTracks()[0];
 
-          // listen for remote data channel (in case receiver creates one - but we use caller-created)
-          peerConnection.ondatachannel = (event) => {
-            // if receiver also creates a channel we ignore, but we can handle it just in case
-            console.log('Remote data channel received (ignored, using caller-created)');
-          };
+          if (camTrack) camSender = peerConnection.addTrack(camTrack, localStream);
+          if (micTrack) audioSender = peerConnection.addTrack(micTrack, localStream);
 
-          localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+          // If already sharing screen, add screen track too (as a second video track)
+          // Note: multiple video tracks require careful handling on receiver side.
+          // Simpler approach: we use ONE video track at a time (cam OR screen),
+          // and the receiver distinguishes them by stream label. But we want
+          // BOTH camera reactions AND movie screen simultaneously!
+          // So we need TWO video tracks from the sender.
+          // We'll add screen track if available.
+          if (screenStream) {
+            const screenTrack = screenStream.getVideoTracks()[0];
+            screenSender = peerConnection.addTrack(screenTrack, screenStream);
+            // It's ok to pass the screenStream as a separate stream.
+          }
 
           peerConnection.onicecandidate = (e) => {
             if (e.candidate) console.log('ICE', e.candidate);
           };
 
           peerConnection.ontrack = (e) => {
+            console.log('ontrack', e.track.kind, e.streams);
             const [remoteStream] = e.streams;
-            remoteVideo.srcObject = remoteStream;
-            updateStatus('Friend connected 🎬', true);
+            // Distinguish: if it's a video track from a "screen" stream, or audio-only
+            // We'll use heuristics: the first video track we receive -> camera
+            // The second video track -> screen share.
+            // Also handle audio separately.
+            if (e.track.kind === 'video') {
+              // Check if the remoteScreen already has a srcObject assigned
+              // Actually assign streams intelligently:
+              // - If remoteStream has a track that matches a stream with a track labeled "screen"
+              // Better: use the track label. getDisplayMedia track labels usually include "screen".
+              // But labels may not be reliable across browsers.
+              // Robust approach: count video tracks received.
+              handleRemoteVideoTrack(e.track, remoteStream);
+            } else if (e.track.kind === 'audio') {
+              // attach audio to the reaction video (so we hear friend's mic)
+              remoteVideo.srcObject = remoteStream;
+            }
           };
+
+          let remoteVideoTrackCount = 0;
+          function handleRemoteVideoTrack(track, stream) {
+            remoteVideoTrackCount++;
+            if (remoteVideoTrackCount === 1) {
+              // First video track = camera reaction
+              remoteVideo.srcObject = stream;
+            } else {
+              // Second video track = screen share
+              remoteScreen.srcObject = stream;
+              screenLabel.textContent = 'Movie (friend\'s screen)';
+              screenLabel.classList.add('sharing');
+            }
+            // Also if it's the only video track but stream has "screen" in its id, treat as screen
+            if (remoteVideoTrackCount === 1 && stream.id && stream.id.toLowerCase().includes('screen')) {
+              remoteScreen.srcObject = stream;
+              screenLabel.textContent = 'Movie (friend\'s screen)';
+              screenLabel.classList.add('sharing');
+              remoteVideo.srcObject = null;
+            }
+          }
 
           peerConnection.onconnectionstatechange = () => {
             if (!peerConnection) return;
@@ -597,7 +602,7 @@
         const text = answerText.value.trim();
         if (!text) return;
 
-        // ---- CALLER: apply remote answer ----
+        // CALLER: apply remote answer
         if (isCaller && peerConnection) {
           try {
             const answer = JSON.parse(text);
@@ -611,7 +616,7 @@
           return;
         }
 
-        // ---- RECEIVER: process offer, create answer ----
+        // RECEIVER: process offer, create answer
         if (!localStream) {
           alert('Start your camera first before receiving an offer.');
           return;
@@ -626,26 +631,38 @@
           if (!offer.type || !offer.sdp) throw new Error('Invalid offer');
 
           updateStatus('Processing offer...', false);
-          isReceiver = true;
           isCaller = false;
 
           peerConnection = new RTCPeerConnection(rtcConfig);
 
-          // receiver: listen for data channel created by caller
-          peerConnection.ondatachannel = (event) => {
-            setupDataChannel(event.channel);
-          };
+          // Add our camera + mic
+          const camTrack = localStream.getVideoTracks()[0];
+          const micTrack = localStream.getAudioTracks()[0];
+          if (camTrack) camSender = peerConnection.addTrack(camTrack, localStream);
+          if (micTrack) audioSender = peerConnection.addTrack(micTrack, localStream);
 
-          localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+          // If we're already sharing our screen, add it too
+          if (screenStream) {
+            const screenTrack = screenStream.getVideoTracks()[0];
+            screenSender = peerConnection.addTrack(screenTrack, screenStream);
+          }
 
-          peerConnection.onicecandidate = (e) => {
-            if (e.candidate) console.log('ICE', e.candidate);
-          };
-
+          // Receive remote tracks
+          let remoteVideoTrackCount = 0;
           peerConnection.ontrack = (e) => {
             const [remoteStream] = e.streams;
-            remoteVideo.srcObject = remoteStream;
-            updateStatus('Friend connected 🎬', true);
+            if (e.track.kind === 'video') {
+              remoteVideoTrackCount++;
+              if (remoteVideoTrackCount === 1) {
+                remoteVideo.srcObject = remoteStream;
+              } else {
+                remoteScreen.srcObject = remoteStream;
+                screenLabel.textContent = 'Movie (friend\'s screen)';
+                screenLabel.classList.add('sharing');
+              }
+            } else if (e.track.kind === 'audio') {
+              remoteVideo.srcObject = remoteStream;
+            }
           };
 
           peerConnection.onconnectionstatechange = () => {
@@ -683,7 +700,7 @@
         }
       });
 
-      // ----- COPY offer/answer -----
+      // ----- COPY -----
       copyOfferBtn.addEventListener('click', () => {
         const txt = offerText.value;
         if (!txt) return;
@@ -711,32 +728,14 @@
       answerText.addEventListener('input', setButtonsState);
       offerText.addEventListener('input', setButtonsState);
 
-      // ----- SHARE WEBSITE: local load button -----
-      loadUrlBtn.addEventListener('click', () => {
-        let url = urlInput.value.trim();
-        if (!url.startsWith('http')) {
-          url = 'https://' + url;
-        }
-        loadSharedWebsite(url);
-      });
-
-      // also allow pressing Enter in URL input
-      urlInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          loadUrlBtn.click();
-        }
-      });
-
-      // ----- initialize UI -----
+      // ----- init -----
       setButtonsState();
       updateStatus('Ready — start camera', false);
 
-      // clean up on unload
       window.addEventListener('beforeunload', () => {
         if (localStream) localStream.getTracks().forEach(t => t.stop());
+        if (screenStream) screenStream.getTracks().forEach(t => t.stop());
         if (peerConnection) peerConnection.close();
-        if (dataChannel) dataChannel.close();
       });
 
     })();
