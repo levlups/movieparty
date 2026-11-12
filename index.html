@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MovieTogether — Watch together</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d32;--panel2:#1d2943;--line:#2d3a59;--text:#f4f6ff;--muted:#aab5ce;--accent:#8b7cff;--accent2:#5be0c1;--danger:#ff6b7a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#1a2441 0,#0b1020 48%);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}.wrap{max-width:1100px;margin:auto;padding:28px 18px 60px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px}.brand{display:flex;align-items:center;gap:12px}.logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--accent),#4c9dff);display:grid;place-items:center;font-size:23px}.brand h1{font-size:23px;margin:0}.brand p{margin:2px 0 0;color:var(--muted);font-size:13px}.pill{border:1px solid var(--line);border-radius:999px;padding:7px 12px;color:var(--muted);font-size:12px}.grid{display:grid;grid-template-columns:1.35fr .85fr;gap:18px}.panel{background:rgba(21,29,50,.94);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 18px 50px #0003}.panel h2{font-size:17px;margin:0 0 6px}.sub{color:var(--muted);font-size:13px;margin:0 0 15px}.screen{background:#050812;border:1px solid var(--line);border-radius:14px;overflow:hidden;aspect-ratio:16/9;display:grid;place-items:center;position:relative}.screen video{width:100%;height:100%;object-fit:contain;background:#050812}.placeholder{text-align:center;padding:20px;color:var(--muted)}.placeholder b{display:block;color:var(--text);font-size:16px;margin-bottom:5px}.row{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}.btn{border:0;border-radius:11px;padding:10px 14px;font-weight:650;cursor:pointer;background:var(--accent);color:white}.btn.secondary{background:var(--panel2);border:1px solid var(--line);color:var(--text)}.btn.green{background:#167b68}.btn:disabled{opacity:.45;cursor:not-allowed}label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}input[type=file],textarea{width:100%;background:#0d1426;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px;font:inherit}textarea{min-height:108px;resize:vertical;font:12px/1.45 ui-monospace,monospace}input[type=file]{font-size:13px}.status{margin-top:12px;border-radius:10px;padding:10px 12px;background:#0d1426;color:var(--muted);font-size:13px;border:1px solid var(--line)}.status.ok{color:var(--accent2)}.status.bad{color:#ff9ba5}.steps{padding-left:19px;color:var(--muted);font-size:13px}.steps li{margin:7px 0}.steps strong{color:var(--text)}.note{font-size:12px;color:var(--muted);margin-top:12px}.divider{height:1px;background:var(--line);margin:17px 0}.emoji{font-size:25px;cursor:pointer;background:transparent;border:1px solid var(--line);border-radius:10px;padding:6px 9px}.reactions{display:flex;gap:7px;flex-wrap:wrap}.foot{color:var(--muted);font-size:12px;text-align:center;margin-top:20px}.hidden{display:none!important}@media(max-width:800px){.grid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}.wrap{padding:18px 12px 40px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <header class="top"><div class="brand"><div class="logo">🎬</div><div><h1>MovieTogether</h1><p>A little cinema, shared from anywhere.</p></div></div><span class="pill">No account · No upload · Peer-to-peer</span></header>
+ <div class="grid">
+  <main class="panel">
+   <h2>Watch together</h2><p class="sub">Share a browser tab with its sound, or play the same local MP4 on both computers.</p>
+   <div class="screen" id="remoteWrap"><div class="placeholder" id="remotePlaceholder"><b>Your friend's screen will appear here</b>Connect first, then your friend can share a browser tab.</div><video id="remoteVideo" autoplay playsinline controls class="hidden"></video></div>
+   <div class="row"><button class="btn green" id="shareBtn">▣ Share a browser tab</button><button class="btn secondary" id="stopShareBtn" disabled>Stop sharing</button></div>
+   <label for="fileInput">Or choose a local MP4 (both people choose the same file)</label><input id="fileInput" type="file" accept="video/mp4,video/*">
+   <div class="screen" style="margin-top:10px;aspect-ratio:16/9"><video id="localVideo" controls playsinline class="hidden"></video><div class="placeholder" id="localPlaceholder"><b>Your local movie</b>Select an MP4 above. The file stays on your device.</div></div>
+   <div class="row"><button class="btn secondary" id="playBtn">▶ Play</button><button class="btn secondary" id="pauseBtn">Ⅱ Pause</button><button class="btn secondary" id="syncBtn">↔ Sync position</button></div>
+   <div class="divider"></div><h2>Reactions</h2><p class="sub">Send a quick reaction to the other person.</p><div class="reactions"><button class="emoji" data-emoji="😂">😂</button><button class="emoji" data-emoji="❤️">❤️</button><button class="emoji" data-emoji="😮">😮</button><button class="emoji" data-emoji="👏">👏</button><button class="emoji" data-emoji="🍿">🍿</button><button class="emoji" data-emoji="🔥">🔥</button></div><div id="reactionText" class="status hidden"></div>
+  </main>
+  <aside class="panel">
+   <h2>Connect with a friend</h2><p class="sub">This static GitHub Pages version uses a manual connection code. No server or account is needed.</p>
+   <ol class="steps"><li>Both open this page in Chrome or Edge.</li><li>One person clicks <strong>Create offer</strong> and sends the code.</li><li>The other pastes it and clicks <strong>Create answer</strong>.</li><li>Send the answer back; the first person pastes it and clicks <strong>Connect</strong>.</li></ol>
+   <div class="divider"></div>
+   <button class="btn" id="offerBtn">1. Create offer</button>
+   <label for="offerBox">Offer code (send this to your friend)</label><textarea id="offerBox" placeholder="Your offer will appear here…"></textarea><button class="btn secondary" id="copyOfferBtn">Copy offer</button>
+   <div class="divider"></div>
+   <label for="answerBox">Paste your friend's offer OR answer</label><textarea id="answerBox" placeholder="Paste the code you received here…"></textarea>
+   <div class="row"><button class="btn" id="answerBtn">2. Create answer</button><button class="btn green" id="connectBtn">3. Connect</button></div>
+   <div id="status" class="status">Not connected yet.</div>
+   <p class="note">Tip: the person who creates the offer is the one who shares the browser tab. Share the tab before creating the offer. Choose “Chrome Tab” and enable “Share tab audio” in the browser picker. Your browser may also ask permission for your microphone.</p>
+   <div class="divider"></div><h2>How website sharing works</h2><p class="note">The host shares a browser tab. Your friend receives a live video and audio stream. This works with many sites, but protected services may show a black screen or block capture because of DRM or browser restrictions.</p>
+  </aside>
+ </div>
+ <p class="foot">MovieTogether is a peer-to-peer demo. Connection codes are temporary. Never share them publicly.</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+let pc = null, channel = null, displayStream = null, micStream = null, localUrl = null, isOfferer = false, applyingRemote = false;
+const rtcConfig = {iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
+function status(message, type=''){ $('status').textContent=message; $('status').className='status '+type; }
+function ensurePeer(){
+ if(pc) return pc;
+ pc = new RTCPeerConnection(rtcConfig);
+ pc.oniceconnectionstatechange=()=>{const s=pc.iceConnectionState; if(s==='connected'||s==='completed')status('Connected! You can watch together.','ok'); else if(s==='failed')status('Connection failed. Try again on another network.','bad'); else if(s==='disconnected')status('Connection interrupted…');};
+ pc.onconnectionstatechange=()=>{if(pc.connectionState==='connected')status('Connected! You can watch together.','ok');};
+ pc.ontrack=e=>{const stream=e.streams[0]||new MediaStream([e.track]); if(stream.getVideoTracks().length){$('remoteVideo').srcObject=stream;$('remoteVideo').classList.remove('hidden');$('remotePlaceholder').classList.add('hidden');$('remoteVideo').play().catch(()=>{});}else{const audio=document.createElement('audio');audio.autoplay=true;audio.playsInline=true;audio.srcObject=stream;audio.className='hidden';document.body.appendChild(audio);audio.play().catch(()=>{});}};
+ pc.ondatachannel=e=>{channel=e.channel; setupChannel();};
+ return pc;
+}
+function setupChannel(){
+ if(!channel)return;
+ channel.onopen=()=>status('Connected! Playback sync and reactions are ready.','ok');
+ channel.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return;}
+  if(m.type==='play'){applyingRemote=true;$('localVideo').play().catch(()=>{});setTimeout(()=>applyingRemote=false,300);}
+  if(m.type==='pause'){applyingRemote=true;$('localVideo').pause();setTimeout(()=>applyingRemote=false,300);}
+  if(m.type==='seek' && $('localVideo').src){applyingRemote=true;$('localVideo').currentTime=m.time;setTimeout(()=>applyingRemote=false,500);}
+  if(m.type==='reaction'){ $('reactionText').textContent='Your friend reacted: '+m.emoji; $('reactionText').classList.remove('hidden'); }
+ };
+}
+function send(data){if(channel&&channel.readyState==='open')channel.send(JSON.stringify(data));}
+function waitIce(){return new Promise(resolve=>{if(!pc||pc.iceGatheringState==='complete')return resolve();const check=()=>{if(pc.iceGatheringState==='complete'){pc.removeEventListener('icegatheringstatechange',check);resolve();}};pc.addEventListener('icegatheringstatechange',check);setTimeout(resolve,12000);});}
+function encode(desc){return btoa(unescape(encodeURIComponent(JSON.stringify({type:desc.type,sdp:desc.sdp}))));}
+function decode(text){return JSON.parse(decodeURIComponent(escape(atob(text.trim()))));}
+async function prepareShare(){
+ if(displayStream)return;
+ if(!navigator.mediaDevices?.getDisplayMedia)throw new Error('Screen sharing is not supported here. Use a recent version of Chrome or Edge over HTTPS.');
+ displayStream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:30},audio:true});
+ const peer=ensurePeer();
+ displayStream.getTracks().forEach(track=>peer.addTrack(track,displayStream));
+ try{micStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});micStream.getAudioTracks().forEach(track=>peer.addTrack(track,micStream));}catch(e){console.warn('Microphone unavailable:',e.message);}
+ $('stopShareBtn').disabled=false;
+ displayStream.getVideoTracks()[0].addEventListener('ended',()=>{ $('stopShareBtn').disabled=true; status('You stopped sharing your tab.'); });
+}
+$('shareBtn').onclick=async()=>{try{await prepareShare();status('Tab ready. Now click “Create offer” and send the code.','ok');}catch(e){status(e.message,'bad');}};
+$('stopShareBtn').onclick=()=>{if(displayStream){displayStream.getTracks().forEach(t=>t.stop());displayStream=null;}if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null;}$('stopShareBtn').disabled=true;};
+$('offerBtn').onclick=async()=>{try{
+ if(!displayStream){status('First click “Share a browser tab”, choose a tab, and enable tab audio.','bad');return;}
+ const peer=ensurePeer();isOfferer=true;channel=peer.createDataChannel('movietogether');setupChannel();
+ const offer=await peer.createOffer();await peer.setLocalDescription(offer);status('Preparing connection code…');await waitIce();$('offerBox').value=encode(peer.localDescription);status('Offer ready. Copy it and send it to your friend.','ok');
+ }catch(e){status('Could not create offer: '+e.message,'bad');}};
+$('answerBtn').onclick=async()=>{try{
+ const raw=$('answerBox').value.trim();if(!raw)throw new Error('Paste the offer code first.');
+ const peer=ensurePeer();const offer=decode(raw);await peer.setRemoteDescription(offer);
+ const answer=await peer.createAnswer();await peer.setLocalDescription(answer);status('Preparing answer code…');await waitIce();$('offerBox').value=encode(peer.localDescription);status('Answer ready. Copy the code and send it to the person who created the offer.','ok');
+ }catch(e){status('Could not create answer: '+e.message,'bad');}};
+$('connectBtn').onclick=async()=>{try{const raw=$('answerBox').value.trim();if(!raw)throw new Error('Paste the answer code first.');await ensurePeer().setRemoteDescription(decode(raw));status('Answer accepted. Connecting…');}catch(e){status('Could not connect: '+e.message,'bad');}};
+$('copyOfferBtn').onclick=async()=>{try{await navigator.clipboard.writeText($('offerBox').value);status('Code copied.','ok');}catch{ $('offerBox').select();status('Select and copy the code manually.');}};
+$('fileInput').onchange=e=>{const file=e.target.files[0];if(!file)return;if(localUrl)URL.revokeObjectURL(localUrl);localUrl=URL.createObjectURL(file);$('localVideo').src=localUrl;$('localVideo').classList.remove('hidden');$('localPlaceholder').classList.add('hidden');};
+$('playBtn').onclick=()=>{$('localVideo').play().catch(()=>{});send({type:'play'});};
+$('pauseBtn').onclick=()=>{$('localVideo').pause();send({type:'pause'});};
+$('syncBtn').onclick=()=>send({type:'seek',time:$('localVideo').currentTime});
+$('localVideo').addEventListener('seeked',()=>{if(!applyingRemote)send({type:'seek',time:$('localVideo').currentTime});});
+$('localVideo').addEventListener('play',()=>{if(!applyingRemote)send({type:'play'});});
+$('localVideo').addEventListener('pause',()=>{if(!applyingRemote)send({type:'pause'});});
+document.querySelectorAll('[data-emoji]').forEach(b=>b.onclick=()=>{send({type:'reaction',emoji:b.dataset.emoji});$('reactionText').textContent='You reacted: '+b.dataset.emoji;$('reactionText').classList.remove('hidden');});
+window.addEventListener('beforeunload',()=>{if(pc)pc.close();if(localUrl)URL.revokeObjectURL(localUrl);});
+</script>
+</body>
+</html>
