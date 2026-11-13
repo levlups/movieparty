@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎬 watch & react · screen share</title>
+  <title>🎬 watch & react · easy link</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -11,152 +11,93 @@
       font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
       background: #0b0f17;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
       padding: 1rem;
     }
 
     .app {
-      max-width: 1400px;
-      width: 100%;
-      background: #1a1f2b;
-      border-radius: 2rem;
+      max-width: 1400px; width: 100%;
+      background: #1a1f2b; border-radius: 2rem;
       padding: 1.8rem 1.5rem;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
       border: 1px solid #2e3a4b;
     }
 
     h1 {
-      text-align: center;
-      font-weight: 500;
-      font-size: 1.6rem;
-      letter-spacing: -0.5px;
-      color: #f0f3fa;
-      margin-bottom: 1.2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.6rem;
-      flex-wrap: wrap;
+      text-align: center; font-weight: 500; font-size: 1.6rem;
+      color: #f0f3fa; margin-bottom: 1.2rem;
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.6rem; flex-wrap: wrap;
+    }
+    h1 span {
+      background: #2e3a4b; padding: 0.2rem 0.8rem; border-radius: 40px;
+      font-size: 0.85rem; color: #9eb7d9;
     }
 
-    h1 span {
-      background: #2e3a4b;
-      padding: 0.2rem 0.8rem;
-      border-radius: 40px;
-      font-size: 0.85rem;
-      font-weight: 400;
-      color: #9eb7d9;
+    .hint {
+      text-align: center; font-size: 0.85rem; color: #7d8fa8;
+      margin-bottom: 1rem; padding: 0.7rem 1rem;
+      background: #0e141f; border-radius: 1rem;
+      border: 1px dashed #2e3a4b; line-height: 1.5;
     }
+    .hint strong { color: #b8cdf0; }
 
     .main-grid {
-      display: grid;
-      grid-template-columns: 2.2fr 1fr;
-      gap: 1.2rem;
-      margin-bottom: 1.2rem;
+      display: grid; grid-template-columns: 2.2fr 1fr;
+      gap: 1.2rem; margin-bottom: 1.2rem;
     }
 
     .screen-card {
-      background: #0d121c;
-      border-radius: 1.2rem;
-      overflow: hidden;
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
-      border: 1px solid #2e3a4b;
-      aspect-ratio: 16 / 9;
-      position: relative;
+      background: #0d121c; border-radius: 1.2rem; overflow: hidden;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5); border: 1px solid #2e3a4b;
+      aspect-ratio: 16/9; position: relative;
     }
-
     .screen-card video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
-      background: #000;
+      width: 100%; height: 100%; object-fit: contain;
+      display: block; background: #000;
     }
 
-    .reaction-column {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
+    .reaction-column { display: flex; flex-direction: column; gap: 1rem; }
 
     .video-card {
-      background: #0d121c;
-      border-radius: 1.2rem;
-      overflow: hidden;
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
-      border: 1px solid #2e3a4b;
-      aspect-ratio: 4 / 3;
-      position: relative;
-      flex: 1;
+      background: #0d121c; border-radius: 1.2rem; overflow: hidden;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5); border: 1px solid #2e3a4b;
+      aspect-ratio: 4/3; position: relative; flex: 1;
     }
-
     .video-card video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      background: #05080e;
-      transform: scaleX(-1);
+      width: 100%; height: 100%; object-fit: cover;
+      display: block; background: #05080e; transform: scaleX(-1);
     }
-
     .video-card.remote video { transform: scaleX(1); }
 
     .label {
-      position: absolute;
-      bottom: 10px;
-      left: 14px;
-      background: rgba(0, 0, 0, 0.65);
-      backdrop-filter: blur(6px);
-      padding: 0.2rem 0.8rem;
-      border-radius: 50px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      color: #eef3ff;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      z-index: 2;
+      position: absolute; bottom: 10px; left: 14px;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+      padding: 0.2rem 0.8rem; border-radius: 50px;
+      font-size: 0.75rem; font-weight: 500; color: #eef3ff;
+      border: 1px solid rgba(255,255,255,0.1); z-index: 2;
     }
-
     .label.sharing {
-      background: rgba(46, 204, 113, 0.75);
-      border-color: #2ecc71;
+      background: rgba(46,204,113,0.75); border-color: #2ecc71;
     }
 
     .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.8rem;
-      justify-content: center;
-      align-items: center;
-      margin-bottom: 1rem;
+      display: flex; flex-wrap: wrap; gap: 0.8rem;
+      justify-content: center; align-items: center; margin-bottom: 1rem;
     }
 
     button {
-      background: #2e3a4b;
-      border: none;
-      color: #f0f4fe;
-      font-weight: 500;
-      font-size: 0.9rem;
-      padding: 0.7rem 1.5rem;
-      border-radius: 60px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      border: 1px solid #3f4e63;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      background: #2e3a4b; border: none; color: #f0f4fe;
+      font-weight: 500; font-size: 0.9rem; padding: 0.7rem 1.5rem;
+      border-radius: 60px; cursor: pointer; transition: all 0.15s ease;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 0.4rem; border: 1px solid #3f4e63;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     }
-
     button:hover:not(:disabled) {
-      background: #3d4d63;
-      border-color: #5e74a0;
-      transform: scale(1.02);
+      background: #3d4d63; border-color: #5e74a0; transform: scale(1.02);
     }
-
     button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
     .primary { background: #3b6eff; border-color: #5a86ff; color: white; }
@@ -167,87 +108,49 @@
     .danger { background: #b33a4b; border-color: #d45c6e; }
     .danger:hover:not(:disabled) { background: #9e2f3f; }
 
-    .signal-box {
-      display: flex;
-      flex-direction: column;
-      gap: 0.7rem;
-      background: #0d121c;
-      border-radius: 1.2rem;
-      padding: 1.2rem;
-      border: 1px solid #2e3a4b;
-      margin-bottom: 0.6rem;
+    /* Big link-sharing panel */
+    .link-panel {
+      background: #0d121c; border-radius: 1.2rem; padding: 1.2rem;
+      border: 1px solid #2e3a4b; margin-bottom: 0.6rem;
     }
-
-    .signal-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.7rem;
-      align-items: center;
+    .link-panel h3 {
+      font-size: 0.95rem; color: #c9d9f0; font-weight: 500;
+      margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.5rem;
     }
-
-    .signal-row label {
-      font-size: 0.85rem;
-      color: #9eb7d9;
-      font-weight: 500;
-      min-width: 90px;
+    .link-row {
+      display: flex; gap: 0.5rem; margin-bottom: 0.8rem; flex-wrap: wrap;
     }
-
-    textarea {
-      flex: 1;
-      background: #070b12;
-      border: 1px solid #2e3a4b;
-      border-radius: 0.8rem;
-      padding: 0.6rem 0.9rem;
-      color: #d2e0f5;
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      font-size: 0.8rem;
-      resize: vertical;
-      min-height: 60px;
+    .link-row:last-child { margin-bottom: 0; }
+    .link-row input {
+      flex: 1; background: #070b12; border: 1px solid #2e3a4b;
+      border-radius: 2rem; padding: 0.7rem 1.1rem;
+      color: #d2e0f5; font-size: 0.85rem; font-family: 'SF Mono', monospace;
+      min-width: 200px;
     }
-
-    textarea:focus { outline: none; border-color: #3b6eff; box-shadow: 0 0 0 3px rgba(59, 110, 255, 0.2); }
+    .link-row input:focus { outline: none; border-color: #3b6eff; }
+    .link-row button { padding: 0.6rem 1.2rem; font-size: 0.85rem; }
 
     .status-badge {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      font-size: 0.85rem;
-      color: #a7bbdd;
-      background: #0e141f;
-      padding: 0.4rem 1rem;
-      border-radius: 40px;
-      border: 1px solid #2e3a4b;
-      margin-top: 0.3rem;
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.5rem; font-size: 0.85rem; color: #a7bbdd;
+      background: #0e141f; padding: 0.5rem 1rem;
+      border-radius: 40px; border: 1px solid #2e3a4b; margin-top: 0.4rem;
     }
-
     .dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: #b33a4b;
-      display: inline-block;
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #b33a4b; display: inline-block;
     }
-
     .dot.connected { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; }
 
     .footer-note {
-      text-align: center;
-      color: #5e6f8a;
-      font-size: 0.7rem;
-      margin-top: 0.6rem;
+      text-align: center; color: #5e6f8a; font-size: 0.7rem; margin-top: 0.6rem;
     }
 
-    .hint {
-      text-align: center;
-      font-size: 0.8rem;
-      color: #7d8fa8;
-      margin-bottom: 1rem;
-      padding: 0.6rem 1rem;
-      background: #0e141f;
-      border-radius: 1rem;
-      border: 1px dashed #2e3a4b;
+    .mode-select {
+      display: flex; gap: 0.6rem; justify-content: center; margin-bottom: 1rem;
     }
+    .mode-select button { flex: 0 1 auto; }
+    .mode-select button.active { background: #3b6eff; border-color: #5a86ff; }
 
     @media (max-width: 800px) {
       .main-grid { grid-template-columns: 1fr; }
@@ -257,11 +160,11 @@
 </head>
 <body>
   <div class="app">
-    <h1>🎥 watch & react <span>webrtc screen share</span></h1>
+    <h1>🎥 watch & react <span>easy link</span></h1>
 
     <div class="hint">
-      💡 Play the movie in another tab, then click <strong>Share screen</strong> and pick that tab.
-      Your camera stays visible on the side so your friend still sees your face.
+      <strong>How it works:</strong> Start camera → click <strong>Create invite link</strong> → send the link to your friend →
+      they open it and click <strong>Generate reply link</strong> → send it back → you paste it → connected. 🎉
     </div>
 
     <div class="main-grid">
@@ -286,20 +189,20 @@
       <button id="startBtn" class="primary">🎬 Start camera & mic</button>
       <button id="shareBtn" class="success" disabled>🖥️ Share screen</button>
       <button id="stopShareBtn" class="secondary" disabled>⏹ Stop sharing</button>
-      <button id="callBtn" class="secondary" disabled>📞 Call friend</button>
       <button id="hangupBtn" class="danger" disabled>✖ Hang up</button>
     </div>
 
-    <div class="signal-box">
-      <div class="signal-row">
-        <label>📤 Your offer</label>
-        <textarea id="offerText" placeholder="Click 'Call friend' to generate offer..." readonly></textarea>
-        <button id="copyOfferBtn" disabled>Copy</button>
+    <div class="link-panel" id="linkPanel">
+      <h3>🔗 Connection links</h3>
+      <div class="link-row" id="offerRow">
+        <input type="text" id="offerLink" placeholder="Your invite / reply link will appear here" readonly>
+        <button id="createInviteBtn" class="primary">Create invite link</button>
+        <button id="copyOfferLinkBtn" class="secondary" disabled>Copy</button>
       </div>
-      <div class="signal-row">
-        <label>📥 Remote answer</label>
-        <textarea id="answerText" placeholder="Paste friend's answer here..."></textarea>
-        <button id="applyAnswerBtn" disabled>Apply</button>
+      <div class="link-row" id="answerRow">
+        <input type="text" id="answerLink" placeholder="Paste your friend's link here">
+        <button id="applyLinkBtn" class="primary" disabled>Connect</button>
+        <button id="pasteBtn" class="secondary">Paste</button>
       </div>
       <div class="status-badge">
         <span class="dot" id="statusDot"></span>
@@ -308,7 +211,7 @@
     </div>
 
     <div class="footer-note">
-      No external services · pure WebRTC · screen share + reactions
+      No external services · pure WebRTC · compressed links
     </div>
   </div>
 
@@ -322,28 +225,26 @@
       const startBtn = document.getElementById('startBtn');
       const shareBtn = document.getElementById('shareBtn');
       const stopShareBtn = document.getElementById('stopShareBtn');
-      const callBtn = document.getElementById('callBtn');
       const hangupBtn = document.getElementById('hangupBtn');
-      const offerText = document.getElementById('offerText');
-      const answerText = document.getElementById('answerText');
-      const copyOfferBtn = document.getElementById('copyOfferBtn');
-      const applyAnswerBtn = document.getElementById('applyAnswerBtn');
+      const createInviteBtn = document.getElementById('createInviteBtn');
+      const copyOfferLinkBtn = document.getElementById('copyOfferLinkBtn');
+      const offerLink = document.getElementById('offerLink');
+      const answerLink = document.getElementById('answerLink');
+      const applyLinkBtn = document.getElementById('applyLinkBtn');
+      const pasteBtn = document.getElementById('pasteBtn');
       const statusDot = document.getElementById('statusDot');
       const statusText = document.getElementById('statusText');
 
       // ----- state -----
-      let localStream = null;      // camera + mic (always running)
-      let screenStream = null;     // screen capture (only while sharing)
+      let localStream = null;
+      let screenStream = null;
       let peerConnection = null;
-      let currentOffer = null;
       let isCaller = false;
-
-      // Separate senders so we never mix up the two video tracks
-      let camSender = null;        // carries the CAMERA video
-      let screenSender = null;     // carries the SCREEN video (added later)
+      let isReceiver = false;
+      let camSender = null;
+      let screenSender = null;
       let audioSender = null;
 
-      // Fixed stream IDs so the receiver can tell camera vs screen apart
       const CAMERA_STREAM_ID = 'camera-stream';
       const SCREEN_STREAM_ID = 'screen-stream';
 
@@ -363,24 +264,18 @@
       function setButtonsState() {
         const hasLocal = !!localStream;
         const hasPeer = !!peerConnection;
-        const peerOpen = hasPeer && peerConnection.connectionState !== 'closed' && peerConnection.connectionState !== 'failed';
+        const peerOpen = hasPeer && peerConnection.connectionState !== 'closed'
+          && peerConnection.connectionState !== 'failed';
 
         startBtn.disabled = hasLocal;
-        callBtn.disabled = !hasLocal || peerOpen;
         hangupBtn.disabled = !hasPeer;
 
         shareBtn.disabled = !hasLocal || !!screenStream;
         stopShareBtn.disabled = !screenStream;
 
-        copyOfferBtn.disabled = !offerText.value.trim();
-
-        if (isCaller && hasPeer) {
-          applyAnswerBtn.disabled = !answerText.value.trim();
-        } else if (!hasPeer && !isCaller && hasLocal) {
-          applyAnswerBtn.disabled = !answerText.value.trim();
-        } else {
-          applyAnswerBtn.disabled = true;
-        }
+        createInviteBtn.disabled = !hasLocal || hasPeer;
+        copyOfferLinkBtn.disabled = !offerLink.value.trim();
+        applyLinkBtn.disabled = !answerLink.value.trim() || !hasLocal || hasPeer;
       }
 
       function closePeerConnection() {
@@ -398,28 +293,133 @@
         remoteScreen.srcObject = null;
         screenLabel.textContent = "Movie (friend's screen)";
         screenLabel.classList.remove('sharing');
-        offerText.value = '';
-        currentOffer = null;
         isCaller = false;
+        isReceiver = false;
         updateStatus('Disconnected', false);
         setButtonsState();
       }
 
-      // Build a MediaStream that reuses an existing track but with a fixed ID
-      // so we can label camera vs screen reliably on the receiver.
       function makeLabeledStream(track, streamId) {
         const s = new MediaStream();
         s.addTrack(track);
-        // MediaStream.id is read-only in some browsers, so we rely on the fact
-        // that the receiver sees the stream object whose id we set via this
-        // wrapper. In practice, addTrack preserves the stream reference we pass
-        // to addTrack(), so we tag it by keeping a reference. To make the ID
-        // reliable, we override the getter:
         Object.defineProperty(s, 'id', { value: streamId, writable: false });
         return s;
       }
 
-      // ----- START CAMERA + MIC -----
+      // ----- compression helpers (SDP → short link-friendly code) -----
+      async function compressToCode(obj) {
+        const json = JSON.stringify(obj);
+        const data = new TextEncoder().encode(json);
+        const cs = new CompressionStream('deflate');
+        const writer = cs.writable.getWriter();
+        writer.write(data);
+        writer.close();
+        const compressed = await new Response(cs.readable).arrayBuffer();
+        return base64urlEncode(new Uint8Array(compressed));
+      }
+
+      async function decompressFromCode(code) {
+        const bytes = base64urlDecode(code);
+        const ds = new DecompressionStream('deflate');
+        const writer = ds.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        const decompressed = await new Response(ds.readable).arrayBuffer();
+        const json = new TextDecoder().decode(decompressed);
+        return JSON.parse(json);
+      }
+
+      function base64urlEncode(bytes) {
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      }
+
+      function base64urlDecode(str) {
+        str = str.replace(/-/g, '+').replace(/_/g, '/');
+        while (str.length % 4) str += '=';
+        const bin = atob(str);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return bytes;
+      }
+
+      // Build a short shareable URL like https://user.github.io/repo/#o=<code>
+      function buildShareLink(kind, code) {
+        const base = location.origin + location.pathname;
+        return base + '#s=' + kind + '&c=' + code;
+      }
+
+      // Parse the current hash, if present
+      function parseHashLink() {
+        const h = location.hash;
+        if (!h || h.length < 3) return null;
+        const params = new URLSearchParams(h.slice(1));
+        const s = params.get('s');
+        const c = params.get('c');
+        if (!s || !c) return null;
+        return { kind: s, code: c };
+      }
+
+      // Auto-load incoming link on page open
+      async function processIncomingLink() {
+        const link = parseHashLink();
+        if (!link) return;
+
+        if (link.kind === 'offer') {
+          // We are the receiver — must have local stream before connecting.
+          // Store the offer, prompt user to start camera.
+          pendingOffer = link.code;
+          offerLink.value = '(offer received from friend — waiting for your camera)';
+          createInviteBtn.textContent = 'Generate reply link';
+          updateStatus('Offer received — start camera to connect', false);
+          // Enable camera start automatically
+          startBtn.classList.add('pulse');
+        } else if (link.kind === 'answer') {
+          // We are the caller — apply the answer
+          pendingAnswer = link.code;
+          answerLink.value = '(answer received — will apply on connect)';
+          updateStatus('Answer received — click Connect', false);
+        }
+      }
+
+      let pendingOffer = null;
+      let pendingAnswer = null;
+
+      // ----- RECEIVE remote tracks -----
+      function handleRemoteTrack(event) {
+        const track = event.track;
+        const stream = event.streams[0];
+        const streamId = stream ? stream.id : '';
+
+        if (track.kind === 'video') {
+          if (streamId === SCREEN_STREAM_ID || streamId.includes('screen')) {
+            remoteScreen.srcObject = stream;
+            screenLabel.textContent = "Movie (friend's screen)";
+            screenLabel.classList.add('sharing');
+          } else {
+            remoteVideo.srcObject = stream;
+          }
+        } else if (track.kind === 'audio') {
+          remoteVideo.srcObject = stream;
+        }
+      }
+
+      // ----- ADD CAMERA TRACKS -----
+      function addCameraTracksToPeer() {
+        if (!peerConnection || !localStream) return;
+        const camTrack = localStream.getVideoTracks()[0];
+        const micTrack = localStream.getAudioTracks()[0];
+        if (camTrack && !camSender) {
+          const camStream = makeLabeledStream(camTrack, CAMERA_STREAM_ID);
+          camSender = peerConnection.addTrack(camTrack, camStream);
+        }
+        if (micTrack && !audioSender) {
+          audioSender = peerConnection.addTrack(micTrack, localStream);
+        }
+      }
+
+      // ----- START CAMERA -----
       startBtn.addEventListener('click', async () => {
         if (localStream) return;
         try {
@@ -432,166 +432,45 @@
           localVideo.srcObject = stream;
           updateStatus('Camera ready', false);
           setButtonsState();
+
+          // If we have a pending offer from the hash, auto-process it now
+          if (pendingOffer) {
+            await connectAsReceiver(pendingOffer);
+            pendingOffer = null;
+          } else if (pendingAnswer) {
+            // caller waiting on answer — should already have a peer connection
+            // handled by the connect flow; nothing to do here
+          }
         } catch (err) {
           updateStatus('❌ ' + err.message, false);
           alert('Camera error: ' + err.message);
         }
       });
 
-      // ----- ADD CAMERA TRACKS TO PEER (used by both caller and receiver) -----
-      function addCameraTracksToPeer() {
-        if (!peerConnection || !localStream) return;
-        const camTrack = localStream.getVideoTracks()[0];
-        const micTrack = localStream.getAudioTracks()[0];
-        if (camTrack && !camSender) {
-          // Tag the stream so the receiver knows this is the camera
-          const camStream = makeLabeledStream(camTrack, CAMERA_STREAM_ID);
-          camSender = peerConnection.addTrack(camTrack, camStream);
-        }
-        if (micTrack && !audioSender) {
-          audioSender = peerConnection.addTrack(micTrack, localStream);
-        }
-      }
+      // ----- CREATE INVITE -----
+      createInviteBtn.addEventListener('click', async () => {
+        if (!localStream) return;
 
-      // ----- SHARE SCREEN -----
-      shareBtn.addEventListener('click', async () => {
-        if (screenStream) return;
-        try {
-          updateStatus('Requesting screen share...', false);
-          const stream = await navigator.mediaDevices.getDisplayMedia({
-            video: { cursor: 'always' },
-            audio: false
-          });
-
-          screenStream = stream;
-          const screenTrack = screenStream.getVideoTracks()[0];
-
-          // If we're already in a call, ADD the screen as a NEW track
-          // (do NOT replace the camera track!)
-          if (peerConnection && !screenSender) {
-            const screenStreamLabeled = makeLabeledStream(screenTrack, SCREEN_STREAM_ID);
-            screenSender = peerConnection.addTrack(screenTrack, screenStreamLabeled);
-
-            // Renegotiate so the receiver learns about the new track.
-            // Only the CALLER can initiate renegotiation in this simple design.
-            // If we're the receiver, we still add the track — the caller will
-            // need to renegotiate. We handle both cases below.
-            await renegotiateIfPossible();
-          }
-
-          // Auto-stop when user clicks browser's native "Stop sharing"
-          screenTrack.onended = () => {
-            stopScreenShare();
-          };
-
-          updateStatus('Sharing screen — friend sees it', !!peerConnection);
-          setButtonsState();
-        } catch (err) {
-          if (err.name !== 'NotAllowedError') {
-            alert('Screen share error: ' + err.message);
-          }
-          updateStatus('Screen share cancelled', false);
-          setButtonsState();
-        }
-      });
-
-      // ----- STOP SHARING -----
-      async function stopScreenShare() {
-        if (screenStream) {
-          screenStream.getTracks().forEach(t => t.stop());
-          screenStream = null;
-        }
-        // Remove the screen sender from the peer connection
-        if (peerConnection && screenSender) {
-          try {
-            peerConnection.removeTrack(screenSender);
-          } catch (e) { console.warn('removeTrack failed', e); }
-          screenSender = null;
-          // Renegotiate to tell the remote the track is gone
-          await renegotiateIfPossible();
-        }
-        updateStatus('Screen share stopped', !!peerConnection);
-        setButtonsState();
-      }
-
-      stopShareBtn.addEventListener('click', () => {
-        stopScreenShare();
-      });
-
-      // ----- RENEGOTIATION (only the caller drives it here) -----
-      // We use a simple pattern: only the "caller" (initiator) will create
-      // a new offer after tracks change. The receiver replies with an answer.
-      // This keeps the manual-copy signaling manageable.
-      async function renegotiateIfPossible() {
-        if (!peerConnection || !isCaller) {
-          // Receiver can't initiate here without new signaling; but the caller
-          // will send a fresh offer anyway. We just add/remove locally.
+        // If we have a pending offer (we're the receiver), just create an answer
+        if (pendingOffer) {
+          await connectAsReceiver(pendingOffer);
+          pendingOffer = null;
           return;
         }
-        try {
-          const offer = await peerConnection.createOffer();
-          await peerConnection.setLocalDescription(offer);
 
-          await new Promise(resolve => {
-            if (peerConnection.iceGatheringState === 'complete') return resolve();
-            const check = () => {
-              if (peerConnection.iceGatheringState === 'complete') {
-                peerConnection.removeEventListener('icegatheringstatechange', check);
-                resolve();
-              }
-            };
-            peerConnection.addEventListener('icegatheringstatechange', check);
-            setTimeout(resolve, 3000);
-          });
+        // Otherwise, create a new offer as the caller
+        await createOfferAsCaller();
+      });
 
-          currentOffer = peerConnection.localDescription;
-          offerText.value = JSON.stringify(currentOffer.toJSON(), null, 2);
-          updateStatus('Tracks changed — send new offer to friend', false);
-          setButtonsState();
-        } catch (err) {
-          console.warn('Renegotiation failed', err);
-        }
-      }
-
-      // ----- RECEIVER: apply remote track to the right place -----
-      function handleRemoteTrack(event) {
-        const track = event.track;
-        const stream = event.streams[0];
-
-        // Identify by stream ID we set on the sender side
-        const streamId = stream ? stream.id : '';
-
-        console.log('Received track:', track.kind, 'streamId:', streamId, 'label:', track.label);
-
-        if (track.kind === 'video') {
-          if (streamId === SCREEN_STREAM_ID || streamId.includes('screen')) {
-            // It's the movie/screen
-            remoteScreen.srcObject = stream;
-            screenLabel.textContent = 'Movie (friend\'s screen)';
-            screenLabel.classList.add('sharing');
-          } else {
-            // It's the camera reaction
-            remoteVideo.srcObject = stream;
-          }
-        } else if (track.kind === 'audio') {
-          // Attach audio to the reaction video so we hear the friend
-          remoteVideo.srcObject = stream;
-        }
-      }
-
-      // ----- CALLER: create offer + camera tracks -----
-      callBtn.addEventListener('click', async () => {
-        if (!localStream) return;
+      async function createOfferAsCaller() {
         if (peerConnection) closePeerConnection();
-
         try {
-          updateStatus('Creating offer...', false);
+          updateStatus('Creating invite link...', false);
           isCaller = true;
+          isReceiver = false;
           peerConnection = new RTCPeerConnection(rtcConfig);
-
           addCameraTracksToPeer();
 
-          // If already sharing screen when the call starts, add it
           if (screenStream && !screenSender) {
             const screenTrack = screenStream.getVideoTracks()[0];
             const labeled = makeLabeledStream(screenTrack, SCREEN_STREAM_ID);
@@ -615,67 +494,33 @@
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
 
-          await new Promise(resolve => {
-            if (peerConnection.iceGatheringState === 'complete') return resolve();
-            const check = () => {
-              if (peerConnection.iceGatheringState === 'complete') {
-                peerConnection.removeEventListener('icegatheringstatechange', check);
-                resolve();
-              }
-            };
-            peerConnection.addEventListener('icegatheringstatechange', check);
-            setTimeout(resolve, 3000);
-          });
+          await waitForIceGathering();
 
-          currentOffer = peerConnection.localDescription;
-          offerText.value = JSON.stringify(currentOffer.toJSON(), null, 2);
-          updateStatus('Offer ready — share', false);
+          const code = await compressToCode(peerConnection.localDescription.toJSON());
+          const link = buildShareLink('offer', code);
+          offerLink.value = link;
+          updateStatus('Invite link ready — copy and send it', false);
           setButtonsState();
         } catch (err) {
           console.error(err);
           updateStatus('❌ ' + err.message, false);
           closePeerConnection();
         }
-      });
+      }
 
-      // ----- APPLY (caller: apply answer / receiver: process offer) -----
-      applyAnswerBtn.addEventListener('click', async () => {
-        const text = answerText.value.trim();
-        if (!text) return;
-
-        // CALLER: apply remote answer
-        if (isCaller && peerConnection) {
-          try {
-            const answer = JSON.parse(text);
-            if (!answer.type || !answer.sdp) throw new Error('Invalid answer');
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-            updateStatus('Answer applied — connecting...', false);
-            setButtonsState();
-          } catch (err) {
-            alert('Invalid answer: ' + err.message);
-          }
-          return;
-        }
-
-        // RECEIVER: process offer, create answer
+      async function connectAsReceiver(offerCode) {
+        if (peerConnection) closePeerConnection();
         if (!localStream) {
-          alert('Start your camera first before receiving an offer.');
+          alert('Start camera first.');
           return;
         }
-        if (peerConnection) {
-          alert('Already in a call. Hang up first.');
-          return;
-        }
-
         try {
-          const offer = JSON.parse(text);
-          if (!offer.type || !offer.sdp) throw new Error('Invalid offer');
-
           updateStatus('Processing offer...', false);
           isCaller = false;
+          isReceiver = true;
 
+          const offerObj = await decompressFromCode(offerCode);
           peerConnection = new RTCPeerConnection(rtcConfig);
-
           addCameraTracksToPeer();
 
           if (screenStream && !screenSender) {
@@ -694,62 +539,173 @@
             setButtonsState();
           };
 
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(offerObj));
 
           const answer = await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
 
-          await new Promise(resolve => {
-            if (peerConnection.iceGatheringState === 'complete') return resolve();
-            const check = () => {
-              if (peerConnection.iceGatheringState === 'complete') {
-                peerConnection.removeEventListener('icegatheringstatechange', check);
-                resolve();
-              }
-            };
-            peerConnection.addEventListener('icegatheringstatechange', check);
-            setTimeout(resolve, 3000);
-          });
+          await waitForIceGathering();
 
-          offerText.value = JSON.stringify(peerConnection.localDescription.toJSON(), null, 2);
-          updateStatus('Answer ready — copy and send back', false);
+          const code = await compressToCode(peerConnection.localDescription.toJSON());
+          const link = buildShareLink('answer', code);
+          offerLink.value = link;
+          createInviteBtn.textContent = 'Create invite link';
+          updateStatus('Reply link ready — copy and send it back', false);
           setButtonsState();
         } catch (err) {
           console.error(err);
           updateStatus('❌ ' + err.message, false);
-          if (peerConnection) closePeerConnection();
+          closePeerConnection();
+        }
+      }
+
+      // ----- APPLY LINK (caller receives answer) -----
+      applyLinkBtn.addEventListener('click', async () => {
+        const raw = answerLink.value.trim();
+        if (!raw) return;
+
+        // Accept either a full URL with #s=answer&c=... or just the code
+        let code = raw;
+        const match = raw.match(/[#&]c=([^&]+)/);
+        if (match) code = match[1];
+
+        if (!peerConnection) {
+          alert('No active call. Create an invite link first.');
+          return;
+        }
+        if (!isCaller) {
+          alert('Only the caller can apply an answer link.');
+          return;
+        }
+
+        try {
+          const answerObj = await decompressFromCode(code);
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(answerObj));
+          updateStatus('Connected — waiting for tracks...', false);
+          setButtonsState();
+        } catch (err) {
+          alert('Invalid answer link: ' + err.message);
         }
       });
 
-      // ----- COPY -----
-      copyOfferBtn.addEventListener('click', () => {
-        const txt = offerText.value;
-        if (!txt) return;
-        navigator.clipboard.writeText(txt).then(() => {
-          updateStatus('Copied to clipboard', false);
-          setTimeout(() => {
-            if (peerConnection && peerConnection.connectionState === 'connected') {
-              updateStatus('Friend connected 🎬', true);
-            } else {
-              updateStatus('Ready', false);
-            }
-          }, 1500);
-        }).catch(() => alert('Copy failed'));
+      // ----- Paste button -----
+      pasteBtn.addEventListener('click', async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          answerLink.value = text;
+          setButtonsState();
+        } catch (e) {
+          alert('Could not read clipboard — paste manually.');
+        }
       });
 
-      // ----- HANGUP -----
+      // ----- COPY offer link -----
+      copyOfferLinkBtn.addEventListener('click', () => {
+        if (!offerLink.value) return;
+        navigator.clipboard.writeText(offerLink.value).then(() => {
+          updateStatus('Link copied — send it to your friend', false);
+        }).catch(() => {
+          // Fallback: select text
+          offerLink.select();
+          document.execCommand('copy');
+        });
+      });
+
+      // ----- screen share -----
+      shareBtn.addEventListener('click', async () => {
+        if (screenStream) return;
+        try {
+          updateStatus('Requesting screen share...', false);
+          const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: { cursor: 'always' },
+            audio: false
+          });
+          screenStream = stream;
+          const screenTrack = screenStream.getVideoTracks()[0];
+
+          if (peerConnection && !screenSender) {
+            const labeled = makeLabeledStream(screenTrack, SCREEN_STREAM_ID);
+            screenSender = peerConnection.addTrack(screenTrack, labeled);
+            await renegotiateAsCaller();
+          }
+
+          screenTrack.onended = () => stopScreenShare();
+
+          updateStatus('Sharing screen', !!peerConnection);
+          setButtonsState();
+        } catch (err) {
+          if (err.name !== 'NotAllowedError') alert('Screen error: ' + err.message);
+          updateStatus('Screen share cancelled', false);
+          setButtonsState();
+        }
+      });
+
+      async function stopScreenShare() {
+        if (screenStream) {
+          screenStream.getTracks().forEach(t => t.stop());
+          screenStream = null;
+        }
+        if (peerConnection && screenSender) {
+          try { peerConnection.removeTrack(screenSender); } catch (e) {}
+          screenSender = null;
+          await renegotiateAsCaller();
+        }
+        updateStatus('Screen share stopped', !!peerConnection);
+        setButtonsState();
+      }
+      stopShareBtn.addEventListener('click', () => stopScreenShare());
+
+      async function renegotiateAsCaller() {
+        if (!peerConnection || !isCaller) return;
+        try {
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+          await waitForIceGathering();
+          const code = await compressToCode(peerConnection.localDescription.toJSON());
+          offerLink.value = buildShareLink('offer', code);
+          updateStatus('Tracks changed — send new invite link', false);
+          setButtonsState();
+        } catch (e) {
+          console.warn('Renegotiation failed', e);
+        }
+      }
+
+      async function waitForIceGathering() {
+        if (!peerConnection) return;
+        if (peerConnection.iceGatheringState === 'complete') return;
+        await new Promise(resolve => {
+          const check = () => {
+            if (peerConnection.iceGatheringState === 'complete') {
+              peerConnection.removeEventListener('icegatheringstatechange', check);
+              resolve();
+            }
+          };
+          peerConnection.addEventListener('icegatheringstatechange', check);
+          setTimeout(resolve, 3000);
+        });
+      }
+
+      // ----- hangup -----
       hangupBtn.addEventListener('click', () => {
         closePeerConnection();
-        answerText.value = '';
+        answerLink.value = '';
+        offerLink.value = '';
+        createInviteBtn.textContent = 'Create invite link';
         updateStatus('Call ended', false);
         setButtonsState();
       });
 
-      answerText.addEventListener('input', setButtonsState);
-      offerText.addEventListener('input', setButtonsState);
+      answerLink.addEventListener('input', setButtonsState);
 
+      // ----- init -----
       setButtonsState();
       updateStatus('Ready — start camera', false);
+
+      // Handle hash on load (someone opened your invite link)
+      processIncomingLink();
+      window.addEventListener('hashchange', () => {
+        processIncomingLink();
+      });
 
       window.addEventListener('beforeunload', () => {
         if (localStream) localStream.getTracks().forEach(t => t.stop());
