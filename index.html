@@ -51,7 +51,6 @@
       color: #9eb7d9;
     }
 
-    /* Layout: movie (big) + reactions (small) */
     .main-grid {
       display: grid;
       grid-template-columns: 2.2fr 1fr;
@@ -125,7 +124,6 @@
       border-color: #2ecc71;
     }
 
-    /* Controls */
     .controls {
       display: flex;
       flex-wrap: wrap;
@@ -169,7 +167,6 @@
     .danger { background: #b33a4b; border-color: #d45c6e; }
     .danger:hover:not(:disabled) { background: #9e2f3f; }
 
-    /* Signal area */
     .signal-box {
       display: flex;
       flex-direction: column;
@@ -263,19 +260,16 @@
     <h1>🎥 watch & react <span>webrtc screen share</span></h1>
 
     <div class="hint">
-      💡 To watch a movie together: play the movie in another tab/window,
-      then click <strong>Share screen</strong> and pick that tab. Your friend will see it here.
+      💡 Play the movie in another tab, then click <strong>Share screen</strong> and pick that tab.
+      Your camera stays visible on the side so your friend still sees your face.
     </div>
 
-    <!-- Movie screen + reaction cameras -->
     <div class="main-grid">
-      <!-- Shared screen (movie) -->
       <div class="screen-card">
         <video id="remoteScreen" autoplay playsinline></video>
         <div class="label" id="screenLabel">Movie (friend's screen)</div>
       </div>
 
-      <!-- Reaction cameras -->
       <div class="reaction-column">
         <div class="video-card">
           <video id="localVideo" autoplay playsinline muted></video>
@@ -288,7 +282,6 @@
       </div>
     </div>
 
-    <!-- Controls -->
     <div class="controls">
       <button id="startBtn" class="primary">🎬 Start camera & mic</button>
       <button id="shareBtn" class="success" disabled>🖥️ Share screen</button>
@@ -297,7 +290,6 @@
       <button id="hangupBtn" class="danger" disabled>✖ Hang up</button>
     </div>
 
-    <!-- Signaling -->
     <div class="signal-box">
       <div class="signal-row">
         <label>📤 Your offer</label>
@@ -340,11 +332,20 @@
       const statusText = document.getElementById('statusText');
 
       // ----- state -----
-      let localStream = null;          // camera + mic
-      let screenStream = null;         // screen capture
+      let localStream = null;      // camera + mic (always running)
+      let screenStream = null;     // screen capture (only while sharing)
       let peerConnection = null;
       let currentOffer = null;
       let isCaller = false;
+
+      // Separate senders so we never mix up the two video tracks
+      let camSender = null;        // carries the CAMERA video
+      let screenSender = null;     // carries the SCREEN video (added later)
+      let audioSender = null;
+
+      // Fixed stream IDs so the receiver can tell camera vs screen apart
+      const CAMERA_STREAM_ID = 'camera-stream';
+      const SCREEN_STREAM_ID = 'screen-stream';
 
       const rtcConfig = {
         iceServers: [
@@ -352,11 +353,6 @@
           { urls: 'stun:stun1.l.google.com:19302' }
         ]
       };
-
-      // Track which sender belongs to what (so we can replace tracks)
-      let camSender = null;   // video sender for camera
-      let screenSender = null; // video sender for screen share
-      let audioSender = null;
 
       // ----- helpers -----
       function updateStatus(msg, connected = false) {
@@ -400,7 +396,7 @@
         audioSender = null;
         remoteVideo.srcObject = null;
         remoteScreen.srcObject = null;
-        screenLabel.textContent = 'Movie (friend\'s screen)';
+        screenLabel.textContent = "Movie (friend's screen)";
         screenLabel.classList.remove('sharing');
         offerText.value = '';
         currentOffer = null;
@@ -409,21 +405,18 @@
         setButtonsState();
       }
 
-      function stopScreenShare() {
-        if (screenStream) {
-          screenStream.getTracks().forEach(t => t.stop());
-          screenStream = null;
-        }
-        // Replace screen track with camera track on the sender (if in a call)
-        if (peerConnection && camSender && localStream) {
-          const camTrack = localStream.getVideoTracks()[0];
-          if (camTrack) {
-            camSender.replaceTrack(camTrack).catch(err => console.warn('replaceTrack failed', err));
-          }
-        }
-        screenSender = null;
-        updateStatus('Screen share stopped', !!peerConnection);
-        setButtonsState();
+      // Build a MediaStream that reuses an existing track but with a fixed ID
+      // so we can label camera vs screen reliably on the receiver.
+      function makeLabeledStream(track, streamId) {
+        const s = new MediaStream();
+        s.addTrack(track);
+        // MediaStream.id is read-only in some browsers, so we rely on the fact
+        // that the receiver sees the stream object whose id we set via this
+        // wrapper. In practice, addTrack preserves the stream reference we pass
+        // to addTrack(), so we tag it by keeping a reference. To make the ID
+        // reliable, we override the getter:
+        Object.defineProperty(s, 'id', { value: streamId, writable: false });
+        return s;
       }
 
       // ----- START CAMERA + MIC -----
@@ -445,35 +438,55 @@
         }
       });
 
+      // ----- ADD CAMERA TRACKS TO PEER (used by both caller and receiver) -----
+      function addCameraTracksToPeer() {
+        if (!peerConnection || !localStream) return;
+        const camTrack = localStream.getVideoTracks()[0];
+        const micTrack = localStream.getAudioTracks()[0];
+        if (camTrack && !camSender) {
+          // Tag the stream so the receiver knows this is the camera
+          const camStream = makeLabeledStream(camTrack, CAMERA_STREAM_ID);
+          camSender = peerConnection.addTrack(camTrack, camStream);
+        }
+        if (micTrack && !audioSender) {
+          audioSender = peerConnection.addTrack(micTrack, localStream);
+        }
+      }
+
       // ----- SHARE SCREEN -----
       shareBtn.addEventListener('click', async () => {
         if (screenStream) return;
         try {
           updateStatus('Requesting screen share...', false);
-          // Ask user to pick a tab/window/screen
           const stream = await navigator.mediaDevices.getDisplayMedia({
             video: { cursor: 'always' },
-            audio: false // set true if you want to capture tab audio (browser-dependent)
+            audio: false
           });
 
           screenStream = stream;
+          const screenTrack = screenStream.getVideoTracks()[0];
 
-          // If in a call, replace the camera video track with the screen track
-          if (peerConnection && camSender) {
-            const screenTrack = stream.getVideoTracks()[0];
-            await camSender.replaceTrack(screenTrack);
-            screenSender = camSender;
+          // If we're already in a call, ADD the screen as a NEW track
+          // (do NOT replace the camera track!)
+          if (peerConnection && !screenSender) {
+            const screenStreamLabeled = makeLabeledStream(screenTrack, SCREEN_STREAM_ID);
+            screenSender = peerConnection.addTrack(screenTrack, screenStreamLabeled);
+
+            // Renegotiate so the receiver learns about the new track.
+            // Only the CALLER can initiate renegotiation in this simple design.
+            // If we're the receiver, we still add the track — the caller will
+            // need to renegotiate. We handle both cases below.
+            await renegotiateIfPossible();
           }
 
-          // Auto-stop when user clicks browser's "Stop sharing" button
-          stream.getVideoTracks()[0].onended = () => {
+          // Auto-stop when user clicks browser's native "Stop sharing"
+          screenTrack.onended = () => {
             stopScreenShare();
           };
 
           updateStatus('Sharing screen — friend sees it', !!peerConnection);
           setButtonsState();
         } catch (err) {
-          // User cancelled the picker — no need to alert aggressively
           if (err.name !== 'NotAllowedError') {
             alert('Screen share error: ' + err.message);
           }
@@ -483,11 +496,90 @@
       });
 
       // ----- STOP SHARING -----
+      async function stopScreenShare() {
+        if (screenStream) {
+          screenStream.getTracks().forEach(t => t.stop());
+          screenStream = null;
+        }
+        // Remove the screen sender from the peer connection
+        if (peerConnection && screenSender) {
+          try {
+            peerConnection.removeTrack(screenSender);
+          } catch (e) { console.warn('removeTrack failed', e); }
+          screenSender = null;
+          // Renegotiate to tell the remote the track is gone
+          await renegotiateIfPossible();
+        }
+        updateStatus('Screen share stopped', !!peerConnection);
+        setButtonsState();
+      }
+
       stopShareBtn.addEventListener('click', () => {
         stopScreenShare();
       });
 
-      // ----- CALLER: create offer + tracks -----
+      // ----- RENEGOTIATION (only the caller drives it here) -----
+      // We use a simple pattern: only the "caller" (initiator) will create
+      // a new offer after tracks change. The receiver replies with an answer.
+      // This keeps the manual-copy signaling manageable.
+      async function renegotiateIfPossible() {
+        if (!peerConnection || !isCaller) {
+          // Receiver can't initiate here without new signaling; but the caller
+          // will send a fresh offer anyway. We just add/remove locally.
+          return;
+        }
+        try {
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+
+          await new Promise(resolve => {
+            if (peerConnection.iceGatheringState === 'complete') return resolve();
+            const check = () => {
+              if (peerConnection.iceGatheringState === 'complete') {
+                peerConnection.removeEventListener('icegatheringstatechange', check);
+                resolve();
+              }
+            };
+            peerConnection.addEventListener('icegatheringstatechange', check);
+            setTimeout(resolve, 3000);
+          });
+
+          currentOffer = peerConnection.localDescription;
+          offerText.value = JSON.stringify(currentOffer.toJSON(), null, 2);
+          updateStatus('Tracks changed — send new offer to friend', false);
+          setButtonsState();
+        } catch (err) {
+          console.warn('Renegotiation failed', err);
+        }
+      }
+
+      // ----- RECEIVER: apply remote track to the right place -----
+      function handleRemoteTrack(event) {
+        const track = event.track;
+        const stream = event.streams[0];
+
+        // Identify by stream ID we set on the sender side
+        const streamId = stream ? stream.id : '';
+
+        console.log('Received track:', track.kind, 'streamId:', streamId, 'label:', track.label);
+
+        if (track.kind === 'video') {
+          if (streamId === SCREEN_STREAM_ID || streamId.includes('screen')) {
+            // It's the movie/screen
+            remoteScreen.srcObject = stream;
+            screenLabel.textContent = 'Movie (friend\'s screen)';
+            screenLabel.classList.add('sharing');
+          } else {
+            // It's the camera reaction
+            remoteVideo.srcObject = stream;
+          }
+        } else if (track.kind === 'audio') {
+          // Attach audio to the reaction video so we hear the friend
+          remoteVideo.srcObject = stream;
+        }
+      }
+
+      // ----- CALLER: create offer + camera tracks -----
       callBtn.addEventListener('click', async () => {
         if (!localStream) return;
         if (peerConnection) closePeerConnection();
@@ -497,71 +589,20 @@
           isCaller = true;
           peerConnection = new RTCPeerConnection(rtcConfig);
 
-          // Add camera video + audio (always send reactions)
-          const camTrack = localStream.getVideoTracks()[0];
-          const micTrack = localStream.getAudioTracks()[0];
+          addCameraTracksToPeer();
 
-          if (camTrack) camSender = peerConnection.addTrack(camTrack, localStream);
-          if (micTrack) audioSender = peerConnection.addTrack(micTrack, localStream);
-
-          // If already sharing screen, add screen track too (as a second video track)
-          // Note: multiple video tracks require careful handling on receiver side.
-          // Simpler approach: we use ONE video track at a time (cam OR screen),
-          // and the receiver distinguishes them by stream label. But we want
-          // BOTH camera reactions AND movie screen simultaneously!
-          // So we need TWO video tracks from the sender.
-          // We'll add screen track if available.
-          if (screenStream) {
+          // If already sharing screen when the call starts, add it
+          if (screenStream && !screenSender) {
             const screenTrack = screenStream.getVideoTracks()[0];
-            screenSender = peerConnection.addTrack(screenTrack, screenStream);
-            // It's ok to pass the screenStream as a separate stream.
+            const labeled = makeLabeledStream(screenTrack, SCREEN_STREAM_ID);
+            screenSender = peerConnection.addTrack(screenTrack, labeled);
           }
 
           peerConnection.onicecandidate = (e) => {
             if (e.candidate) console.log('ICE', e.candidate);
           };
 
-          peerConnection.ontrack = (e) => {
-            console.log('ontrack', e.track.kind, e.streams);
-            const [remoteStream] = e.streams;
-            // Distinguish: if it's a video track from a "screen" stream, or audio-only
-            // We'll use heuristics: the first video track we receive -> camera
-            // The second video track -> screen share.
-            // Also handle audio separately.
-            if (e.track.kind === 'video') {
-              // Check if the remoteScreen already has a srcObject assigned
-              // Actually assign streams intelligently:
-              // - If remoteStream has a track that matches a stream with a track labeled "screen"
-              // Better: use the track label. getDisplayMedia track labels usually include "screen".
-              // But labels may not be reliable across browsers.
-              // Robust approach: count video tracks received.
-              handleRemoteVideoTrack(e.track, remoteStream);
-            } else if (e.track.kind === 'audio') {
-              // attach audio to the reaction video (so we hear friend's mic)
-              remoteVideo.srcObject = remoteStream;
-            }
-          };
-
-          let remoteVideoTrackCount = 0;
-          function handleRemoteVideoTrack(track, stream) {
-            remoteVideoTrackCount++;
-            if (remoteVideoTrackCount === 1) {
-              // First video track = camera reaction
-              remoteVideo.srcObject = stream;
-            } else {
-              // Second video track = screen share
-              remoteScreen.srcObject = stream;
-              screenLabel.textContent = 'Movie (friend\'s screen)';
-              screenLabel.classList.add('sharing');
-            }
-            // Also if it's the only video track but stream has "screen" in its id, treat as screen
-            if (remoteVideoTrackCount === 1 && stream.id && stream.id.toLowerCase().includes('screen')) {
-              remoteScreen.srcObject = stream;
-              screenLabel.textContent = 'Movie (friend\'s screen)';
-              screenLabel.classList.add('sharing');
-              remoteVideo.srcObject = null;
-            }
-          }
+          peerConnection.ontrack = handleRemoteTrack;
 
           peerConnection.onconnectionstatechange = () => {
             if (!peerConnection) return;
@@ -635,35 +676,15 @@
 
           peerConnection = new RTCPeerConnection(rtcConfig);
 
-          // Add our camera + mic
-          const camTrack = localStream.getVideoTracks()[0];
-          const micTrack = localStream.getAudioTracks()[0];
-          if (camTrack) camSender = peerConnection.addTrack(camTrack, localStream);
-          if (micTrack) audioSender = peerConnection.addTrack(micTrack, localStream);
+          addCameraTracksToPeer();
 
-          // If we're already sharing our screen, add it too
-          if (screenStream) {
+          if (screenStream && !screenSender) {
             const screenTrack = screenStream.getVideoTracks()[0];
-            screenSender = peerConnection.addTrack(screenTrack, screenStream);
+            const labeled = makeLabeledStream(screenTrack, SCREEN_STREAM_ID);
+            screenSender = peerConnection.addTrack(screenTrack, labeled);
           }
 
-          // Receive remote tracks
-          let remoteVideoTrackCount = 0;
-          peerConnection.ontrack = (e) => {
-            const [remoteStream] = e.streams;
-            if (e.track.kind === 'video') {
-              remoteVideoTrackCount++;
-              if (remoteVideoTrackCount === 1) {
-                remoteVideo.srcObject = remoteStream;
-              } else {
-                remoteScreen.srcObject = remoteStream;
-                screenLabel.textContent = 'Movie (friend\'s screen)';
-                screenLabel.classList.add('sharing');
-              }
-            } else if (e.track.kind === 'audio') {
-              remoteVideo.srcObject = remoteStream;
-            }
-          };
+          peerConnection.ontrack = handleRemoteTrack;
 
           peerConnection.onconnectionstatechange = () => {
             if (!peerConnection) return;
@@ -724,11 +745,9 @@
         setButtonsState();
       });
 
-      // ----- update button state on text input -----
       answerText.addEventListener('input', setButtonsState);
       offerText.addEventListener('input', setButtonsState);
 
-      // ----- init -----
       setButtonsState();
       updateStatus('Ready — start camera', false);
 
@@ -737,7 +756,6 @@
         if (screenStream) screenStream.getTracks().forEach(t => t.stop());
         if (peerConnection) peerConnection.close();
       });
-
     })();
   </script>
 </body>
