@@ -10,8 +10,7 @@
       font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
       background: #0b0f17; min-height: 100vh;
       display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 1rem;
+      align-items: center; justify-content: center; padding: 1rem;
     }
     .app {
       max-width: 1400px; width: 100%;
@@ -140,7 +139,8 @@
     <h1>🎥 watch & react <span>PeerJS</span></h1>
 
     <div class="hint">
-      <strong>How it works:</strong> Start camera → share your <strong>Peer ID</strong> → friend enters it and clicks <strong>Connect</strong> → done. No copy-paste SDP.
+      <strong>How it works:</strong> Start camera → copy your Peer ID → friend pastes it and clicks Connect.
+      To share a tab, click <strong>Share screen</strong> — the call reconnects automatically with both camera + screen.
     </div>
 
     <div class="main-grid">
@@ -188,7 +188,6 @@
     </div>
   </div>
 
-  <!-- PeerJS from CDN -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
   <script>
@@ -210,15 +209,16 @@
       const statusText = document.getElementById('statusText');
 
       // ----- state -----
-      let localStream = null;
-      let screenStream = null;
+      let localStream = null;     // camera + mic
+      let screenStream = null;    // screen capture
       let peer = null;
       let currentCall = null;
-      let dataConn = null;
       let myPeerId = null;
+      let remotePeerId = null;    // remembered so we can re-call after screen change
+      let isCaller = false;
 
-      const CAMERA_STREAM_ID = 'camera-stream';
-      const SCREEN_STREAM_ID = 'screen-stream';
+      const CAMERA_TRACK_LABEL = 'camera';
+      const SCREEN_TRACK_LABEL = 'screen';
 
       // ----- helpers -----
       function updateStatus(msg, connected = false) {
@@ -228,9 +228,7 @@
 
       function setButtonsState() {
         const hasLocal = !!localStream;
-        const hasPeerId = !!myPeerId;
         const inCall = !!currentCall;
-
         startBtn.disabled = hasLocal;
         hangupBtn.disabled = !inCall;
         shareBtn.disabled = !hasLocal || !!screenStream;
@@ -239,33 +237,103 @@
         connectBtn.disabled = !hasLocal || !myPeerId || inCall || !remoteIdInput.value.trim();
       }
 
-      function makeLabeledStream(track, streamId) {
-        const s = new MediaStream();
-        s.addTrack(track);
-        Object.defineProperty(s, 'id', { value: streamId, writable: false });
-        return s;
+      // ----- Tag a track with a recognisable label -----
+      // MediaStreamTrack.label is read-only in most browsers, but we can set
+      // contentHint and also wrap the stream with a custom id we control.
+      function tagTrack(track, label) {
+        try { track.contentHint = label === 'screen' ? 'detail' : 'motion'; } catch(e){}
+        try { Object.defineProperty(track, 'label', { value: label, writable: false }); } catch(e){}
+        return track;
       }
 
-      // ----- handle incoming remote tracks -----
-      function handleRemoteTrack(event) {
-        const track = event.track;
-        const stream = event.streams[0];
-        const streamId = stream ? stream.id : '';
+      // ----- Receive remote tracks (hooked to the underlying RTCPeerConnection) -----
+      function attachRemoteTrackHandler(pc) {
+        // Remove any existing handler to avoid duplicates
+        pc.ontrack = null;
 
-        if (track.kind === 'video') {
-          if (streamId === SCREEN_STREAM_ID || streamId.includes('screen')) {
-            remoteScreen.srcObject = stream;
-            screenLabel.textContent = "Movie (friend's screen)";
-            screenLabel.classList.add('sharing');
-          } else {
-            remoteVideo.srcObject = stream;
+        pc.ontrack = (event) => {
+          const track = event.track;
+          const stream = event.streams[0];
+          console.log('Remote track:', track.kind, 'label=', track.label, 'streamId=', stream && stream.id);
+
+          if (track.kind === 'video') {
+            const isScreen =
+              track.label === SCREEN_TRACK_LABEL ||
+              (stream && stream.id && stream.id.toLowerCase().includes('screen'));
+
+            if (isScreen) {
+              remoteScreen.srcObject = stream;
+              screenLabel.textContent = "Movie (friend's screen)";
+              screenLabel.classList.add('sharing');
+            } else {
+              remoteVideo.srcObject = stream;
+            }
+          } else if (track.kind === 'audio') {
+            // Attach audio to the reaction cam so we hear the friend
+            if (!remoteVideo.srcObject) {
+              remoteVideo.srcObject = stream;
+            } else {
+              // Already has video; merge audio tracks
+              const existing = remoteVideo.srcObject;
+              if (!existing.getAudioTracks().length) {
+                existing.addTrack(track);
+              }
+            }
           }
-        } else if (track.kind === 'audio') {
-          remoteVideo.srcObject = stream;
-        }
+        };
       }
 
-      // ----- start camera -----
+      // ----- Hook the RTCPeerConnection of a PeerJS MediaConnection -----
+      function hookCallPeerConnection(call) {
+        // PeerJS exposes the internal peer connection on call.peerConnection
+        // (older versions) or via call._pc / call.peerConnection depending on build.
+        const tryHook = () => {
+          const pc = call.peerConnection || call._pc || (call && call['peerConnection']);
+          if (pc) {
+            attachRemoteTrackHandler(pc);
+            return true;
+          }
+          return false;
+        };
+
+        if (tryHook()) return;
+
+        // Poll briefly until PeerJS attaches its internal pc
+        let tries = 0;
+        const timer = setInterval(() => {
+          if (tryHook() || ++tries > 30) {
+            clearInterval(timer);
+          }
+        }, 100);
+      }
+
+      // ----- Build the outgoing stream (camera + mic + optional screen) -----
+      function buildOutgoingStream() {
+        // We need to send camera and screen as SEPARATE tracks so the receiver
+        // can tell them apart. We tag each track's label so it survives transit.
+        if (!localStream) return null;
+
+        const out = new MediaStream();
+        const camTrack = localStream.getVideoTracks()[0];
+        const micTrack = localStream.getAudioTracks()[0];
+
+        if (camTrack) {
+          tagTrack(camTrack, CAMERA_TRACK_LABEL);
+          out.addTrack(camTrack);
+        }
+        if (micTrack) out.addTrack(micTrack);
+
+        if (screenStream) {
+          const screenTrack = screenStream.getVideoTracks()[0];
+          if (screenTrack) {
+            tagTrack(screenTrack, SCREEN_TRACK_LABEL);
+            out.addTrack(screenTrack);
+          }
+        }
+        return out;
+      }
+
+      // ----- Start camera -----
       startBtn.addEventListener('click', async () => {
         if (localStream) return;
         try {
@@ -284,9 +352,8 @@
         }
       });
 
-      // ----- initialize PeerJS -----
+      // ----- Initialize PeerJS -----
       function initPeer() {
-        // Uses PeerJS Cloud by default. You can pass an ID or let it generate one.
         peer = new Peer(undefined, {
           config: {
             iceServers: [
@@ -312,26 +379,19 @@
           updateStatus('Disconnected from signaling server', false);
         });
 
-        // Handle incoming data connections (not strictly needed for media, but useful)
-        peer.on('connection', (conn) => {
-          dataConn = conn;
-          dataConn.on('data', (data) => {
-            console.log('Data received:', data);
-          });
-        });
-
-        // Handle incoming calls
+        // Incoming call
         peer.on('call', (call) => {
           console.log('Incoming call');
+          isCaller = false;
+
+          // Remember who called us so we can re-call after screen change
+          remotePeerId = call.peer;
+
+          const outgoing = buildOutgoingStream();
+          call.answer(outgoing);
           currentCall = call;
 
-          // Answer with our local stream
-          call.answer(localStream);
-
-          call.on('stream', (remoteStream) => {
-            // PeerJS may send tracks combined; we handle via ontrack on the peer connection
-            console.log('Remote stream received');
-          });
+          hookCallPeerConnection(call);
 
           call.on('close', () => {
             updateStatus('Call ended', false);
@@ -353,39 +413,60 @@
         });
       }
 
-      // Initialize PeerJS on load
       initPeer();
 
-      // ----- connect to remote peer -----
+      // ----- Connect (caller) -----
       connectBtn.addEventListener('click', () => {
-        const remoteId = remoteIdInput.value.trim();
-        if (!remoteId) {
-          alert('Enter a Peer ID first.');
-          return;
-        }
-        if (!localStream) {
-          alert('Start your camera first.');
-          return;
-        }
-        if (currentCall) {
-          alert('Already in a call.');
-          return;
-        }
+        const rid = remoteIdInput.value.trim();
+        if (!rid) return alert('Enter your friend\'s Peer ID.');
+        if (!localStream) return alert('Start your camera first.');
+        if (currentCall) return alert('Already in a call.');
 
+        remotePeerId = rid;
+        isCaller = true;
+
+        const outgoing = buildOutgoingStream();
+        updateStatus('Calling ' + rid + '...', false);
+        currentCall = peer.call(rid, outgoing);
+
+        hookCallPeerConnection(currentCall);
+
+        currentCall.on('close', () => {
+          updateStatus('Call ended', false);
+          currentCall = null;
+          remoteVideo.srcObject = null;
+          remoteScreen.srcObject = null;
+          screenLabel.textContent = "Movie (friend's screen)";
+          screenLabel.classList.remove('sharing');
+          setButtonsState();
+        });
+
+        currentCall.on('error', (err) => {
+          console.error('Call error:', err);
+          updateStatus('Call error: ' + err.message, false);
+        });
+
+        updateStatus('Connected 🎬', true);
+        setButtonsState();
+      });
+
+      // ----- Re-call to pick up new track set (used after screen share toggle) -----
+      function renegotiateCall() {
+        if (!currentCall || !remotePeerId) return;
+
+        const outgoing = buildOutgoingStream();
+        updateStatus('Reconnecting with new tracks...', false);
+
+        // Close the existing call cleanly
+        try { currentCall.close(); } catch(e){}
+        currentCall = null;
+
+        // If we were the receiver, re-call the caller (peer.call works both ways)
+        // If we were the caller, re-call the receiver.
+        // PeerJS allows either side to call.
         try {
-          updateStatus('Calling ' + remoteId + '...', false);
-          currentCall = peer.call(remoteId, localStream);
-
-          currentCall.on('stream', (remoteStream) => {
-            // PeerJS combines tracks into a single stream by default.
-            // We listen to the underlying RTCPeerConnection for separate tracks.
-            console.log('Stream event fired');
-          });
-
-          // We need to access the underlying peer connection to get separate tracks
-          // PeerJS exposes it via call.peerConnection in some versions, but not reliably.
-          // Instead, we listen on the MediaConnection for track events if available.
-          // Alternative: use the stream event and try to split tracks by label.
+          currentCall = peer.call(remotePeerId, outgoing);
+          hookCallPeerConnection(currentCall);
 
           currentCall.on('close', () => {
             updateStatus('Call ended', false);
@@ -402,51 +483,15 @@
             updateStatus('Call error: ' + err.message, false);
           });
 
-          // Try to hook into the underlying RTCPeerConnection for ontrack
-          // PeerJS 1.x uses a PeerConnection internally accessible via call.peerConnection
-          const checkPeerConnection = setInterval(() => {
-            if (currentCall && currentCall.peerConnection) {
-              clearInterval(checkPeerConnection);
-              const pc = currentCall.peerConnection;
-
-              // Override ontrack to handle separate tracks
-              const originalOntrack = pc.ontrack;
-              pc.ontrack = (event) => {
-                handleRemoteTrack(event);
-                if (originalOntrack) originalOntrack(event);
-              };
-
-              // If tracks already arrived before we hooked in, process them
-              const receivers = pc.getReceivers();
-              receivers.forEach(receiver => {
-                if (receiver.track) {
-                  // Create a synthetic event-like object
-                  const stream = new MediaStream([receiver.track]);
-                  // We need to identify which track is which - use track label or id
-                  if (receiver.track.kind === 'video') {
-                    // Heuristic: check if track label contains 'screen' or if it's the second video
-                    // Since we can't easily tell, use the stream id from sender side if preserved.
-                    // PeerJS may strip stream ids. We'll rely on arrival order from ontrack.
-                  }
-                }
-              });
-
-              updateStatus('Connected 🎬', true);
-              setButtonsState();
-            }
-          }, 100);
-
-          // Timeout to avoid infinite loop
-          setTimeout(() => clearInterval(checkPeerConnection), 5000);
-
-          updateStatus('Connecting...', false);
+          updateStatus('Connected 🎬', true);
         } catch (err) {
-          console.error(err);
+          console.error('Re-call failed', err);
           updateStatus('❌ ' + err.message, false);
         }
-      });
+        setButtonsState();
+      }
 
-      // ----- screen sharing -----
+      // ----- Screen sharing -----
       shareBtn.addEventListener('click', async () => {
         if (screenStream) return;
         try {
@@ -457,27 +502,15 @@
           });
           screenStream = stream;
           const screenTrack = screenStream.getVideoTracks()[0];
-
-          // If in a call, add the screen track to the existing peer connection
-          if (currentCall && currentCall.peerConnection) {
-            const pc = currentCall.peerConnection;
-            const labeled = makeLabeledStream(screenTrack, SCREEN_STREAM_ID);
-            // Add track to the RTCPeerConnection directly
-            pc.addTrack(screenTrack, labeled);
-
-            // Renegotiate
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            // PeerJS handles signaling automatically, so we just need to let it know
-            // Actually, PeerJS doesn't expose renegotiation easily.
-            // For simplicity, we'll note that screen sharing during a call requires
-            // the PeerJS to handle renegotiation, which it may not do automatically.
-            // A more robust approach is to use DataConnection to signal, but that's complex.
-            // For this demo, we'll just add the track and hope PeerJS renegotiates.
-            console.warn('Screen share added; renegotiation may be needed manually.');
-          }
+          tagTrack(screenTrack, SCREEN_TRACK_LABEL);
 
           screenTrack.onended = () => stopScreenShare();
+
+          if (currentCall) {
+            // Re-call with the new stream that now includes the screen track
+            renegotiateCall();
+          }
+
           updateStatus('Sharing screen', !!currentCall);
           setButtonsState();
         } catch (err) {
@@ -492,20 +525,19 @@
           screenStream.getTracks().forEach(t => t.stop());
           screenStream = null;
         }
+        if (currentCall) {
+          renegotiateCall();
+        }
         updateStatus('Screen share stopped', !!currentCall);
         setButtonsState();
       }
       stopShareBtn.addEventListener('click', () => stopScreenShare());
 
-      // ----- hangup -----
+      // ----- Hangup -----
       hangupBtn.addEventListener('click', () => {
         if (currentCall) {
-          currentCall.close();
+          try { currentCall.close(); } catch(e){}
           currentCall = null;
-        }
-        if (dataConn) {
-          dataConn.close();
-          dataConn = null;
         }
         remoteVideo.srcObject = null;
         remoteScreen.srcObject = null;
@@ -515,7 +547,7 @@
         setButtonsState();
       });
 
-      // ----- copy ID -----
+      // ----- Copy ID -----
       copyIdBtn.addEventListener('click', () => {
         if (!myPeerId) return;
         navigator.clipboard.writeText(myPeerId).then(() => {
@@ -527,18 +559,15 @@
         }).catch(() => alert('Copy failed'));
       });
 
-      // ----- input listener -----
       remoteIdInput.addEventListener('input', setButtonsState);
 
-      // Initialize buttons
       setButtonsState();
       updateStatus('Connecting to PeerJS server...', false);
 
-      // Cleanup
       window.addEventListener('beforeunload', () => {
         if (localStream) localStream.getTracks().forEach(t => t.stop());
         if (screenStream) screenStream.getTracks().forEach(t => t.stop());
-        if (currentCall) currentCall.close();
+        if (currentCall) try { currentCall.close(); } catch(e){}
         if (peer) peer.destroy();
       });
     })();
