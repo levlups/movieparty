@@ -125,6 +125,24 @@
       background: #b33a4b; display: inline-block;
     }
     .dot.connected { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; }
+
+    .debug {
+      margin-top: 1rem;
+      background: #05080e;
+      border: 1px solid #2e3a4b;
+      border-radius: 0.8rem;
+      padding: 0.8rem 1rem;
+      font-family: 'SF Mono', monospace;
+      font-size: 0.72rem;
+      color: #8ba3c7;
+      max-height: 140px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+    .debug .ok { color: #2ecc71; }
+    .debug .warn { color: #f39c12; }
+
     .footer-note {
       text-align: center; color: #5e6f8a; font-size: 0.7rem; margin-top: 0.6rem;
     }
@@ -140,12 +158,13 @@
 
     <div class="hint">
       <strong>How it works:</strong> Start camera → copy your Peer ID → friend pastes it and clicks Connect.
-      To share a tab, click <strong>Share screen</strong> — the call reconnects automatically with both camera + screen.
+      To share a tab, click <strong>Share screen</strong> — the call reconnects with both camera + screen.
     </div>
 
     <div class="main-grid">
       <div class="screen-card">
-        <video id="remoteScreen" autoplay playsinline></video>
+        <!-- muted is critical: screen track has no audio, but browsers can still block autoplay -->
+        <video id="remoteScreen" autoplay playsinline muted></video>
         <div class="label" id="screenLabel">Movie (friend's screen)</div>
       </div>
       <div class="reaction-column">
@@ -181,6 +200,7 @@
         <span class="dot" id="statusDot"></span>
         <span id="statusText">Waiting for PeerJS...</span>
       </div>
+      <div class="debug" id="debugLog">— debug log —</div>
     </div>
 
     <div class="footer-note">
@@ -207,6 +227,7 @@
       const connectBtn = document.getElementById('connectBtn');
       const statusDot = document.getElementById('statusDot');
       const statusText = document.getElementById('statusText');
+      const debugLog = document.getElementById('debugLog');
 
       // ----- state -----
       let localStream = null;
@@ -216,10 +237,16 @@
       let myPeerId = null;
       let remotePeerId = null;
 
-      const CAMERA_TRACK_LABEL = 'camera';
-      const SCREEN_TRACK_LABEL = 'screen';
-
       // ----- helpers -----
+      function log(msg, cls) {
+        const line = document.createElement('div');
+        if (cls) line.className = cls;
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        debugLog.appendChild(line);
+        debugLog.scrollTop = debugLog.scrollHeight;
+        console.log(msg);
+      }
+
       function updateStatus(msg, connected = false) {
         statusText.textContent = msg;
         statusDot.classList.toggle('connected', connected);
@@ -236,106 +263,90 @@
         connectBtn.disabled = !hasLocal || !myPeerId || inCall || !remoteIdInput.value.trim();
       }
 
-      function tagTrack(track, label) {
-        try { track.contentHint = label === 'screen' ? 'detail' : 'motion'; } catch(e){}
-        try { Object.defineProperty(track, 'label', { value: label, writable: false, configurable: true }); } catch(e){}
-        return track;
-      }
-
-      // ----- Core: scan the RTCPeerConnection and place each track -----
-      // Called after every ontrack event AND after the call is established,
-      // so we never miss a track that arrived "too early".
+      // ----- Route incoming tracks by ARRIVAL ORDER (first video = cam, second = screen) -----
+      // This avoids relying on track.label, which some browsers/PeerJS versions drop.
       function routeIncomingTracks(pc) {
         if (!pc) return;
-
         const receivers = pc.getReceivers();
+        const videoTracks = [];
+        const audioTracks = [];
 
-        // Build one stream per role so both videos stay in sync
-        let camStream = remoteVideo._camStream || null;
-        let screenStreamRcv = remoteScreen._screenStream || null;
-
-        receivers.forEach(receiver => {
-          const track = receiver.track;
-          if (!track) return;
-
-          if (track.kind === 'video') {
-            const isScreen = track.label === SCREEN_TRACK_LABEL;
-            if (isScreen) {
-              if (!screenStreamRcv) {
-                screenStreamRcv = new MediaStream();
-                remoteScreen._screenStream = screenStreamRcv;
-              }
-              if (!screenStreamRcv.getTracks().includes(track)) {
-                screenStreamRcv.addTrack(track);
-              }
-            } else {
-              if (!camStream) {
-                camStream = new MediaStream();
-                remoteVideo._camStream = camStream;
-              }
-              if (!camStream.getTracks().includes(track)) {
-                camStream.addTrack(track);
-              }
-            }
-          } else if (track.kind === 'audio') {
-            // Audio always belongs with the camera reaction
-            if (!camStream) {
-              camStream = new MediaStream();
-              remoteVideo._camStream = camStream;
-            }
-            if (!camStream.getTracks().includes(track)) {
-              camStream.addTrack(track);
-            }
-          }
+        receivers.forEach(r => {
+          if (!r.track) return;
+          if (r.track.kind === 'video') videoTracks.push(r.track);
+          else if (r.track.kind === 'audio') audioTracks.push(r.track);
         });
 
-        if (camStream && remoteVideo.srcObject !== camStream) {
-          remoteVideo.srcObject = camStream;
-          remoteVideo.play().catch(() => {});
+        log(`receivers → video:${videoTracks.length} audio:${audioTracks.length}`,
+            videoTracks.length >= 2 ? 'ok' : 'warn');
+        videoTracks.forEach((t, i) => log(`  v[${i}] label="${t.label}" id="${t.id}"`));
+
+        // Build streams
+        let camStream = remoteVideo._stream || new MediaStream();
+        let scrStream = remoteScreen._stream || new MediaStream();
+
+        // Camera = first video track, or fallback to the only one
+        if (videoTracks[0] && !camStream.getVideoTracks().includes(videoTracks[0])) {
+          camStream.addTrack(videoTracks[0]);
         }
-        if (screenStreamRcv && remoteScreen.srcObject !== screenStreamRcv) {
-          remoteScreen.srcObject = screenStreamRcv;
-          screenLabel.textContent = "Movie (friend's screen)";
+        // Screen = second video track
+        if (videoTracks[1] && !scrStream.getVideoTracks().includes(videoTracks[1])) {
+          scrStream.addTrack(videoTracks[1]);
+        }
+
+        // Audio always rides with camera stream
+        audioTracks.forEach(t => {
+          if (!camStream.getAudioTracks().includes(t)) camStream.addTrack(t);
+        });
+
+        // Assign to <video> elements (only if not already set)
+        if (camStream.getTracks().length && remoteVideo.srcObject !== camStream) {
+          remoteVideo._stream = camStream;
+          remoteVideo.srcObject = camStream;
+          remoteVideo.play().catch(err => log('remoteVideo.play() blocked: ' + err.message, 'warn'));
+          log('remoteVideo ← camera stream', 'ok');
+        }
+        if (scrStream.getVideoTracks().length && remoteScreen.srcObject !== scrStream) {
+          remoteScreen._stream = scrStream;
+          remoteScreen.srcObject = scrStream;
+          remoteScreen.play().catch(err => log('remoteScreen.play() blocked: ' + err.message, 'warn'));
           screenLabel.classList.add('sharing');
-          remoteScreen.play().catch(() => {});
+          screenLabel.textContent = "Movie (friend's screen)";
+          log('remoteScreen ← screen stream', 'ok');
         }
       }
 
-      // Watch a MediaConnection and wire up track routing without breaking PeerJS.
+      // Hook a MediaConnection without breaking PeerJS
       function wireCallTracks(call) {
-        // Do NOT null out ontrack — PeerJS needs it.
-        // Instead, piggyback on it, and also poll getReceivers() to be safe.
         let hooked = false;
         const tryHook = () => {
           const pc = call.peerConnection || call._pc;
           if (!pc || hooked) return !!pc;
           hooked = true;
+          log('PeerConnection hooked', 'ok');
 
-          // Piggyback on PeerJS's ontrack (don't replace it!)
+          // Wrap ontrack instead of replacing it
           const originalOntrack = pc.ontrack;
           pc.ontrack = (event) => {
+            log(`ontrack: ${event.track.kind} label="${event.track.label}"`);
             if (originalOntrack) {
-              try { originalOntrack.call(pc, event); } catch(e) { console.warn(e); }
+              try { originalOntrack.call(pc, event); } catch(e) { log('orig ontrack err: '+e.message, 'warn'); }
             }
-            // Route every track (idempotent) so camera + screen both land correctly
-            routeIncomingTracks(pc);
+            // Small delay: allow all tracks from the same negotiation to land
+            setTimeout(() => routeIncomingTracks(pc), 50);
           };
 
-          // Also handle any tracks that were already added
+          // Immediately route any tracks already present
           routeIncomingTracks(pc);
 
-          // Listen for negotiation to catch renegotiated tracks
-          pc.addEventListener('track', () => routeIncomingTracks(pc));
+          // Re-check after negotiation settles
+          setTimeout(() => routeIncomingTracks(pc), 300);
+          setTimeout(() => routeIncomingTracks(pc), 1000);
 
           return true;
         };
 
-        // Poll for pc attachment (PeerJS attaches it slightly after the call is created)
-        if (tryHook()) {
-          // Still run once more after a short delay to catch early tracks
-          setTimeout(tryHook, 200);
-          return;
-        }
+        if (tryHook()) { setTimeout(tryHook, 200); return; }
         let tries = 0;
         const timer = setInterval(() => {
           if (tryHook() || ++tries > 50) clearInterval(timer);
@@ -343,15 +354,14 @@
         setTimeout(() => clearInterval(timer), 6000);
       }
 
-      // ----- Build outgoing stream (camera + mic + optional screen) -----
+      // ----- Build outgoing stream -----
       function buildOutgoingStream() {
         if (!localStream) return null;
         const out = new MediaStream();
         const camTrack = localStream.getVideoTracks()[0];
         const micTrack = localStream.getAudioTracks()[0];
-
         if (camTrack) {
-          tagTrack(camTrack, CAMERA_TRACK_LABEL);
+          try { camTrack.contentHint = 'motion'; } catch(e){}
           out.addTrack(camTrack);
         }
         if (micTrack) out.addTrack(micTrack);
@@ -359,9 +369,12 @@
         if (screenStream) {
           const screenTrack = screenStream.getVideoTracks()[0];
           if (screenTrack) {
-            tagTrack(screenTrack, SCREEN_TRACK_LABEL);
+            try { screenTrack.contentHint = 'detail'; } catch(e){}
             out.addTrack(screenTrack);
+            log('outgoing stream includes screen track');
           }
+        } else {
+          log('outgoing stream: camera + mic only');
         }
         return out;
       }
@@ -378,6 +391,7 @@
           localStream = stream;
           localVideo.srcObject = stream;
           updateStatus('Camera ready', false);
+          log('local camera ready', 'ok');
           setButtonsState();
         } catch (err) {
           updateStatus('❌ ' + err.message, false);
@@ -400,20 +414,23 @@
           myPeerId = id;
           myIdInput.value = id;
           updateStatus('Ready — share your ID', false);
+          log('PeerJS open: ' + id, 'ok');
           setButtonsState();
         });
 
         peer.on('error', (err) => {
           console.error('PeerJS error:', err);
           updateStatus('❌ ' + err.type + ': ' + err.message, false);
+          log('PeerJS error: ' + err.type + ' — ' + err.message, 'warn');
         });
 
         peer.on('disconnected', () => {
           updateStatus('Disconnected from signaling server', false);
+          log('signaling disconnected', 'warn');
         });
 
         peer.on('call', (call) => {
-          console.log('Incoming call from', call.peer);
+          log('incoming call from ' + call.peer);
           remotePeerId = call.peer;
 
           const outgoing = buildOutgoingStream();
@@ -422,16 +439,21 @@
 
           wireCallTracks(call);
 
+          call.on('stream', (rs) => {
+            log('PeerJS stream event (ignored, using PC receivers)');
+          });
+
           call.on('close', () => {
             updateStatus('Call ended', false);
             currentCall = null;
-            remoteVideo._camStream = null;
-            remoteScreen._screenStream = null;
+            remoteVideo._stream = null;
+            remoteScreen._stream = null;
             remoteVideo.srcObject = null;
             remoteScreen.srcObject = null;
             screenLabel.textContent = "Movie (friend's screen)";
             screenLabel.classList.remove('sharing');
             setButtonsState();
+            log('call closed');
           });
 
           call.on('error', (err) => {
@@ -454,23 +476,28 @@
         if (currentCall) return alert('Already in a call.');
 
         remotePeerId = rid;
-
         const outgoing = buildOutgoingStream();
         updateStatus('Calling ' + rid + '...', false);
+        log('calling ' + rid);
         currentCall = peer.call(rid, outgoing);
 
         wireCallTracks(currentCall);
 
+        currentCall.on('stream', (rs) => {
+          log('PeerJS stream event (ignored)');
+        });
+
         currentCall.on('close', () => {
           updateStatus('Call ended', false);
           currentCall = null;
-          remoteVideo._camStream = null;
-          remoteScreen._screenStream = null;
+          remoteVideo._stream = null;
+          remoteScreen._stream = null;
           remoteVideo.srcObject = null;
           remoteScreen.srcObject = null;
           screenLabel.textContent = "Movie (friend's screen)";
           screenLabel.classList.remove('sharing');
           setButtonsState();
+          log('call closed');
         });
 
         currentCall.on('error', (err) => {
@@ -482,27 +509,29 @@
         setButtonsState();
       });
 
-      // ----- Re-call (used when screen share toggles) -----
+      // ----- Re-call (used after screen toggle) -----
       function renegotiateCall() {
         if (!currentCall || !remotePeerId) return;
-
         const outgoing = buildOutgoingStream();
         updateStatus('Reconnecting with new tracks...', false);
+        log('re-calling with new track set');
 
         try { currentCall.close(); } catch(e){}
         currentCall = null;
-        remoteVideo._camStream = null;
-        remoteScreen._screenStream = null;
+        remoteVideo._stream = null;
+        remoteScreen._stream = null;
 
         try {
           currentCall = peer.call(remotePeerId, outgoing);
           wireCallTracks(currentCall);
 
+          currentCall.on('stream', () => log('PeerJS stream event (ignored)'));
+
           currentCall.on('close', () => {
             updateStatus('Call ended', false);
             currentCall = null;
-            remoteVideo._camStream = null;
-            remoteScreen._screenStream = null;
+            remoteVideo._stream = null;
+            remoteScreen._stream = null;
             remoteVideo.srcObject = null;
             remoteScreen.srcObject = null;
             screenLabel.textContent = "Movie (friend's screen)";
@@ -534,7 +563,8 @@
           });
           screenStream = stream;
           const screenTrack = screenStream.getVideoTracks()[0];
-          tagTrack(screenTrack, SCREEN_TRACK_LABEL);
+          try { screenTrack.contentHint = 'detail'; } catch(e){}
+          log('screen track acquired label="' + screenTrack.label + '"');
 
           screenTrack.onended = () => stopScreenShare();
 
@@ -566,8 +596,8 @@
           try { currentCall.close(); } catch(e){}
           currentCall = null;
         }
-        remoteVideo._camStream = null;
-        remoteScreen._screenStream = null;
+        remoteVideo._stream = null;
+        remoteScreen._stream = null;
         remoteVideo.srcObject = null;
         remoteScreen.srcObject = null;
         screenLabel.textContent = "Movie (friend's screen)";
