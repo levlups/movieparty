@@ -135,7 +135,7 @@
       font-family: 'SF Mono', monospace;
       font-size: 0.72rem;
       color: #8ba3c7;
-      max-height: 140px;
+      max-height: 160px;
       overflow-y: auto;
       white-space: pre-wrap;
       line-height: 1.5;
@@ -158,12 +158,11 @@
 
     <div class="hint">
       <strong>How it works:</strong> Start camera → copy your Peer ID → friend pastes it and clicks Connect.
-      To share a tab, click <strong>Share screen</strong> — the call reconnects with both camera + screen.
+      Then click <strong>Share screen</strong> — the movie appears on their big panel without disconnecting.
     </div>
 
     <div class="main-grid">
       <div class="screen-card">
-        <!-- muted is critical: screen track has no audio, but browsers can still block autoplay -->
         <video id="remoteScreen" autoplay playsinline muted></video>
         <div class="label" id="screenLabel">Movie (friend's screen)</div>
       </div>
@@ -212,7 +211,6 @@
 
   <script>
     (function() {
-      // ----- DOM -----
       const localVideo = document.getElementById('localVideo');
       const remoteVideo = document.getElementById('remoteVideo');
       const remoteScreen = document.getElementById('remoteScreen');
@@ -234,8 +232,10 @@
       let screenStream = null;
       let peer = null;
       let currentCall = null;
+      let currentData = null;      // PeerJS DataConnection, used to negotiate renegotiation
       let myPeerId = null;
       let remotePeerId = null;
+      let screenSender = null;     // RTCRtpSender we use to add/remove the screen track
 
       // ----- helpers -----
       function log(msg, cls) {
@@ -263,14 +263,20 @@
         connectBtn.disabled = !hasLocal || !myPeerId || inCall || !remoteIdInput.value.trim();
       }
 
-      // ----- Route incoming tracks by ARRIVAL ORDER (first video = cam, second = screen) -----
-      // This avoids relying on track.label, which some browsers/PeerJS versions drop.
+      // ----- Get the underlying RTCPeerConnection from a PeerJS MediaConnection -----
+      function getPC(call) {
+        if (!call) return null;
+        return call.peerConnection || call._pc || null;
+      }
+
+      // ----- Route incoming tracks by arrival order -----
+      // (PeerJS renames track labels to "remote video", so we can't use label.
+      //  Instead: first video receiver = camera, second = screen.)
       function routeIncomingTracks(pc) {
         if (!pc) return;
         const receivers = pc.getReceivers();
         const videoTracks = [];
         const audioTracks = [];
-
         receivers.forEach(r => {
           if (!r.track) return;
           if (r.track.kind === 'video') videoTracks.push(r.track);
@@ -279,67 +285,55 @@
 
         log(`receivers → video:${videoTracks.length} audio:${audioTracks.length}`,
             videoTracks.length >= 2 ? 'ok' : 'warn');
-        videoTracks.forEach((t, i) => log(`  v[${i}] label="${t.label}" id="${t.id}"`));
 
-        // Build streams
-        let camStream = remoteVideo._stream || new MediaStream();
-        let scrStream = remoteScreen._stream || new MediaStream();
+        // Rebuild streams from current receivers (idempotent, self-healing)
+        const camStream = remoteVideo._stream || new MediaStream();
+        const scrStream = remoteScreen._stream || new MediaStream();
 
-        // Camera = first video track, or fallback to the only one
         if (videoTracks[0] && !camStream.getVideoTracks().includes(videoTracks[0])) {
           camStream.addTrack(videoTracks[0]);
         }
-        // Screen = second video track
         if (videoTracks[1] && !scrStream.getVideoTracks().includes(videoTracks[1])) {
           scrStream.addTrack(videoTracks[1]);
         }
-
-        // Audio always rides with camera stream
         audioTracks.forEach(t => {
           if (!camStream.getAudioTracks().includes(t)) camStream.addTrack(t);
         });
 
-        // Assign to <video> elements (only if not already set)
         if (camStream.getTracks().length && remoteVideo.srcObject !== camStream) {
           remoteVideo._stream = camStream;
           remoteVideo.srcObject = camStream;
-          remoteVideo.play().catch(err => log('remoteVideo.play() blocked: ' + err.message, 'warn'));
-          log('remoteVideo ← camera stream', 'ok');
+          remoteVideo.play().catch(e => log('remoteVideo.play blocked: ' + e.message, 'warn'));
         }
         if (scrStream.getVideoTracks().length && remoteScreen.srcObject !== scrStream) {
           remoteScreen._stream = scrStream;
           remoteScreen.srcObject = scrStream;
-          remoteScreen.play().catch(err => log('remoteScreen.play() blocked: ' + err.message, 'warn'));
+          remoteScreen.play().catch(e => log('remoteScreen.play blocked: ' + e.message, 'warn'));
           screenLabel.classList.add('sharing');
           screenLabel.textContent = "Movie (friend's screen)";
           log('remoteScreen ← screen stream', 'ok');
         }
       }
 
-      // Hook a MediaConnection without breaking PeerJS
+      // ----- Wire a MediaConnection: hook ontrack, keep PeerJS's handler intact -----
       function wireCallTracks(call) {
         let hooked = false;
         const tryHook = () => {
-          const pc = call.peerConnection || call._pc;
+          const pc = getPC(call);
           if (!pc || hooked) return !!pc;
           hooked = true;
           log('PeerConnection hooked', 'ok');
 
-          // Wrap ontrack instead of replacing it
           const originalOntrack = pc.ontrack;
           pc.ontrack = (event) => {
-            log(`ontrack: ${event.track.kind} label="${event.track.label}"`);
+            log(`ontrack: ${event.track.kind}`);
             if (originalOntrack) {
               try { originalOntrack.call(pc, event); } catch(e) { log('orig ontrack err: '+e.message, 'warn'); }
             }
-            // Small delay: allow all tracks from the same negotiation to land
             setTimeout(() => routeIncomingTracks(pc), 50);
           };
 
-          // Immediately route any tracks already present
           routeIncomingTracks(pc);
-
-          // Re-check after negotiation settles
           setTimeout(() => routeIncomingTracks(pc), 300);
           setTimeout(() => routeIncomingTracks(pc), 1000);
 
@@ -354,29 +348,82 @@
         setTimeout(() => clearInterval(timer), 6000);
       }
 
-      // ----- Build outgoing stream -----
-      function buildOutgoingStream() {
-        if (!localStream) return null;
-        const out = new MediaStream();
-        const camTrack = localStream.getVideoTracks()[0];
-        const micTrack = localStream.getAudioTracks()[0];
-        if (camTrack) {
-          try { camTrack.contentHint = 'motion'; } catch(e){}
-          out.addTrack(camTrack);
-        }
-        if (micTrack) out.addTrack(micTrack);
+      // ----- Build the DataConnection (for renegotiation messages) -----
+      function setupDataConnection(conn) {
+        currentData = conn;
+        conn.on('open', () => log('DataConnection open', 'ok'));
+        conn.on('data', async (raw) => {
+          let msg;
+          try { msg = typeof raw === 'string' ? JSON.parse(raw) : raw; }
+          catch(e) { return; }
 
-        if (screenStream) {
-          const screenTrack = screenStream.getVideoTracks()[0];
-          if (screenTrack) {
-            try { screenTrack.contentHint = 'detail'; } catch(e){}
-            out.addTrack(screenTrack);
-            log('outgoing stream includes screen track');
+          const pc = getPC(currentCall);
+          if (!pc) { log('renegotiate: no PC', 'warn'); return; }
+
+          if (msg.type === 'renegotiate-offer') {
+            log('receive renegotiate-offer', 'ok');
+            try {
+              await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              conn.send(JSON.stringify({
+                type: 'renegotiate-answer',
+                sdp: pc.localDescription.toJSON()
+              }));
+              log('sent renegotiate-answer', 'ok');
+            } catch (err) {
+              log('renegotiate-offer fail: ' + err.message, 'warn');
+            }
+          } else if (msg.type === 'renegotiate-answer') {
+            log('receive renegotiate-answer', 'ok');
+            try {
+              await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+              log('renegotiate complete', 'ok');
+            } catch (err) {
+              log('renegotiate-answer fail: ' + err.message, 'warn');
+            }
           }
-        } else {
-          log('outgoing stream: camera + mic only');
+        });
+        conn.on('close', () => { log('DataConnection closed', 'warn'); currentData = null; });
+        conn.on('error', (err) => log('DataConnection error: ' + err.message, 'warn'));
+      }
+
+      // ----- Do the actual renegotiation on our side -----
+      async function renegotiateAsOfferer() {
+        const pc = getPC(currentCall);
+        if (!pc || !currentData) { log('renegotiate: missing pc/data', 'warn'); return; }
+
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          currentData.send(JSON.stringify({
+            type: 'renegotiate-offer',
+            sdp: pc.localDescription.toJSON()
+          }));
+          log('sent renegotiate-offer', 'ok');
+        } catch (err) {
+          log('renegotiate offer fail: ' + err.message, 'warn');
         }
-        return out;
+      }
+
+      // ----- Add or remove the screen track on the live PC -----
+      async function applyScreenTrackToCall(add) {
+        const pc = getPC(currentCall);
+        if (!pc) { log('applyScreen: no pc', 'warn'); return; }
+
+        if (add && screenStream) {
+          const track = screenStream.getVideoTracks()[0];
+          if (!track) return;
+          // Add track to PC and keep the sender for later removal
+          screenSender = pc.addTrack(track, screenStream);
+          log('screen track added to PC', 'ok');
+          await renegotiateAsOfferer();
+        } else if (!add && screenSender) {
+          try { pc.removeTrack(screenSender); } catch(e) {}
+          screenSender = null;
+          log('screen track removed from PC', 'ok');
+          await renegotiateAsOfferer();
+        }
       }
 
       // ----- Start camera -----
@@ -429,37 +476,27 @@
           log('signaling disconnected', 'warn');
         });
 
+        peer.on('connection', (conn) => {
+          log('incoming DataConnection from ' + conn.peer, 'ok');
+          setupDataConnection(conn);
+        });
+
         peer.on('call', (call) => {
           log('incoming call from ' + call.peer);
           remotePeerId = call.peer;
 
-          const outgoing = buildOutgoingStream();
+          const outgoing = new MediaStream();
+          const camTrack = localStream.getVideoTracks()[0];
+          const micTrack = localStream.getAudioTracks()[0];
+          if (camTrack) outgoing.addTrack(camTrack);
+          if (micTrack) outgoing.addTrack(micTrack);
+
           call.answer(outgoing);
           currentCall = call;
-
           wireCallTracks(call);
 
-          call.on('stream', (rs) => {
-            log('PeerJS stream event (ignored, using PC receivers)');
-          });
-
-          call.on('close', () => {
-            updateStatus('Call ended', false);
-            currentCall = null;
-            remoteVideo._stream = null;
-            remoteScreen._stream = null;
-            remoteVideo.srcObject = null;
-            remoteScreen.srcObject = null;
-            screenLabel.textContent = "Movie (friend's screen)";
-            screenLabel.classList.remove('sharing');
-            setButtonsState();
-            log('call closed');
-          });
-
-          call.on('error', (err) => {
-            console.error('Call error:', err);
-            updateStatus('Call error: ' + err.message, false);
-          });
+          call.on('close', cleanupCall);
+          call.on('error', (err) => log('call error: ' + err.message, 'warn'));
 
           updateStatus('Connected 🎬', true);
           setButtonsState();
@@ -476,83 +513,47 @@
         if (currentCall) return alert('Already in a call.');
 
         remotePeerId = rid;
-        const outgoing = buildOutgoingStream();
+
+        // Open DataConnection first (for renegotiation)
+        const conn = peer.connect(rid, { reliable: true });
+        setupDataConnection(conn);
+        currentData = conn;
+
+        // Then place the call
+        const outgoing = new MediaStream();
+        const camTrack = localStream.getVideoTracks()[0];
+        const micTrack = localStream.getAudioTracks()[0];
+        if (camTrack) outgoing.addTrack(camTrack);
+        if (micTrack) outgoing.addTrack(micTrack);
+
         updateStatus('Calling ' + rid + '...', false);
         log('calling ' + rid);
         currentCall = peer.call(rid, outgoing);
-
         wireCallTracks(currentCall);
 
-        currentCall.on('stream', (rs) => {
-          log('PeerJS stream event (ignored)');
-        });
-
-        currentCall.on('close', () => {
-          updateStatus('Call ended', false);
-          currentCall = null;
-          remoteVideo._stream = null;
-          remoteScreen._stream = null;
-          remoteVideo.srcObject = null;
-          remoteScreen.srcObject = null;
-          screenLabel.textContent = "Movie (friend's screen)";
-          screenLabel.classList.remove('sharing');
-          setButtonsState();
-          log('call closed');
-        });
-
-        currentCall.on('error', (err) => {
-          console.error('Call error:', err);
-          updateStatus('Call error: ' + err.message, false);
-        });
+        currentCall.on('close', cleanupCall);
+        currentCall.on('error', (err) => log('call error: ' + err.message, 'warn'));
 
         updateStatus('Connected 🎬', true);
         setButtonsState();
       });
 
-      // ----- Re-call (used after screen toggle) -----
-      function renegotiateCall() {
-        if (!currentCall || !remotePeerId) return;
-        const outgoing = buildOutgoingStream();
-        updateStatus('Reconnecting with new tracks...', false);
-        log('re-calling with new track set');
-
-        try { currentCall.close(); } catch(e){}
+      // ----- Shared cleanup -----
+      function cleanupCall() {
+        updateStatus('Call ended', false);
         currentCall = null;
         remoteVideo._stream = null;
         remoteScreen._stream = null;
-
-        try {
-          currentCall = peer.call(remotePeerId, outgoing);
-          wireCallTracks(currentCall);
-
-          currentCall.on('stream', () => log('PeerJS stream event (ignored)'));
-
-          currentCall.on('close', () => {
-            updateStatus('Call ended', false);
-            currentCall = null;
-            remoteVideo._stream = null;
-            remoteScreen._stream = null;
-            remoteVideo.srcObject = null;
-            remoteScreen.srcObject = null;
-            screenLabel.textContent = "Movie (friend's screen)";
-            screenLabel.classList.remove('sharing');
-            setButtonsState();
-          });
-
-          currentCall.on('error', (err) => {
-            console.error('Call error:', err);
-            updateStatus('Call error: ' + err.message, false);
-          });
-
-          updateStatus('Connected 🎬', true);
-        } catch (err) {
-          console.error('Re-call failed', err);
-          updateStatus('❌ ' + err.message, false);
-        }
+        remoteVideo.srcObject = null;
+        remoteScreen.srcObject = null;
+        screenLabel.textContent = "Movie (friend's screen)";
+        screenLabel.classList.remove('sharing');
+        screenSender = null;
         setButtonsState();
+        log('call closed');
       }
 
-      // ----- Screen sharing -----
+      // ----- Screen share -----
       shareBtn.addEventListener('click', async () => {
         if (screenStream) return;
         try {
@@ -562,14 +563,13 @@
             audio: false
           });
           screenStream = stream;
-          const screenTrack = screenStream.getVideoTracks()[0];
-          try { screenTrack.contentHint = 'detail'; } catch(e){}
-          log('screen track acquired label="' + screenTrack.label + '"');
+          log('screen track acquired', 'ok');
 
-          screenTrack.onended = () => stopScreenShare();
+          stream.getVideoTracks()[0].onended = () => stopScreenShare();
 
-          if (currentCall) renegotiateCall();
-
+          if (currentCall) {
+            await applyScreenTrackToCall(true);
+          }
           updateStatus('Sharing screen', !!currentCall);
           setButtonsState();
         } catch (err) {
@@ -584,7 +584,9 @@
           screenStream.getTracks().forEach(t => t.stop());
           screenStream = null;
         }
-        if (currentCall) renegotiateCall();
+        if (currentCall) {
+          await applyScreenTrackToCall(false);
+        }
         updateStatus('Screen share stopped', !!currentCall);
         setButtonsState();
       }
@@ -592,16 +594,9 @@
 
       // ----- Hangup -----
       hangupBtn.addEventListener('click', () => {
-        if (currentCall) {
-          try { currentCall.close(); } catch(e){}
-          currentCall = null;
-        }
-        remoteVideo._stream = null;
-        remoteScreen._stream = null;
-        remoteVideo.srcObject = null;
-        remoteScreen.srcObject = null;
-        screenLabel.textContent = "Movie (friend's screen)";
-        screenLabel.classList.remove('sharing');
+        if (currentCall) { try { currentCall.close(); } catch(e){} currentCall = null; }
+        if (currentData) { try { currentData.close(); } catch(e){} currentData = null; }
+        cleanupCall();
         updateStatus('Disconnected', false);
         setButtonsState();
       });
@@ -627,6 +622,7 @@
         if (localStream) localStream.getTracks().forEach(t => t.stop());
         if (screenStream) screenStream.getTracks().forEach(t => t.stop());
         if (currentCall) try { currentCall.close(); } catch(e){}
+        if (currentData) try { currentData.close(); } catch(e){}
         if (peer) peer.destroy();
       });
     })();
